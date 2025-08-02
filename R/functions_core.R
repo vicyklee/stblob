@@ -1,10 +1,3 @@
-require("dplyr")
-require("magrittr")
-require("sf") # for geometry
-require("geosphere") # for calculating geodesic distance matrix
-require("lhs") # for lhs sampling
-require("moocore") # for multiobjective optimisation functions
-
 #------------------------------------------------------------------------------#
 # Algorithm ####
 #------------------------------------------------------------------------------#
@@ -85,7 +78,7 @@ compute_distmat <- function(data, method = "geodesic") {
 #' This function kernelises the distance using the radial basis function. It is also known as the Gaussian kernel.
 #' @param distance a numeric or complex vector of distances.
 #' @param sigma a numeric value of sigma.
-#' @return a numeric or complex vector of distances \eqn([0,1]) in the feature space.
+#' @return a numeric or complex vector of distances \eqn{[0,1} in the feature space.
 #' @export
 
 rbf <- function(distance, sigma) {
@@ -712,10 +705,10 @@ compare_blobs <- function(b1, b2){
 #' @param data a data matrix or data frame with assigned (starting) clusters as a column.
 #' @param k an integer of the number of clusters.
 #' @param r an numeric value of spatial relative weight. It must be \eqn{[0,1]}.
-#' @param iter an integer of the number of iterations. Default is 3.
+#' @param iter an integer of the number of iterations. Default is 3L.
 #' @param space_distmat a numeric spatial distance matrix. Default is NULL.
 #' @param space_distmethod a string of the method for distance computation. It must be either "geodesic" or "euclidean". Default is "geodesic".
-#' @param converge_ari a numeric value of Adjusted Rand Index (ARI) to indicate convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
+#' @param converge_ari a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
 #' @param random_start a logical operator. Should random start or [start_blobs()] be used? Default is F.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
 #' @param ... these arguments include `sigma`.
@@ -737,7 +730,7 @@ compare_blobs <- function(b1, b2){
 #'   \item \code{trace}: a data frame of summary statistics for tracing.
 #' }
 
-blob_search_iter <- function(data, k, r, iter = 3, space_distmat = NULL,
+blob_search_iter <- function(data, k, r, iter = 3L, space_distmat = NULL,
                              space_distmethod = "geodesic", converge_ari = NULL, random_start = F, crs = 4326, ...) {
   
   if (random_start == T) {
@@ -813,9 +806,9 @@ blob_search_iter <- function(data, k, r, iter = 3, space_distmat = NULL,
 #' After the last iteration or when searches converge, the search with the most shared members will be used to assign clusters.
 #' When `converge_ari` is specified, convergence is defined and activated when all ARIs between all two pairs of searches is
 #' above the specified threshold and at least three iterations are performed. 
-#' @inherit blob_search_iter returns
+#' @inherit blob_search_iter return
 
-blob_search_common <- function(data, k, r, iter = 3, space_distmat = NULL,
+blob_search_common <- function(data, k, r, iter = 3L, space_distmat = NULL,
                                space_distmethod = "geodesic", converge_ari = NULL, random_start = F, crs = 4326, ...) {
   
   if (random_start == T) {
@@ -933,7 +926,7 @@ blob_search_common <- function(data, k, r, iter = 3, space_distmat = NULL,
 #' @seealso [sf::st_as_sf()]
 #' @export
 
-blob_search <- function(data, k, r, iter = 3, space_distmat = NULL, space_distmethod = "geodesic",
+blob_search <- function(data, k, r, iter = 3L, space_distmat = NULL, space_distmethod = "geodesic",
                         iter_method = "iterative", converge_ari = NULL, random_start = F, crs = 4326,
                         filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
   N <- nrow(data)
@@ -1002,10 +995,10 @@ blob_search <- function(data, k, r, iter = 3, space_distmat = NULL, space_distme
 #' Find duplicates
 #' 
 #' @description
-#' This function find duplicates in a set of cluster assignments.
+#' This function find duplicates in a set of cluster assignments. It uses [mclust::adjustedRandIndex()] to measure similarity.
 #' 
 #' @param clust a numeric matrix of cluster assignments. Each row is an assignment.
-#' @param ari a numeric value of Adjusted Rand Index (ARI) to indicate duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1.
+#' @param ari a numeric value of Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also [mclust::adjustedRandIndex()].
 #' @return a list of the following objects.
 #' \itemize{
 #'   \item \code{idx}: a numeric vector of duplicate indices.
@@ -1013,11 +1006,11 @@ blob_search <- function(data, k, r, iter = 3, space_distmat = NULL, space_distme
 #'   \item \code{freq}: a contingency table of the frequency of duplicates, an object of class "table", an array of integer values. See also [base::table()].
 #'   \item \code{pairs_dup}: a numeric matrix of pairs of duplicates. The second row stores indices of duplicates of the first row.
 #' }
-#' @seealso [base::table()]
+#' @seealso [base::table()], [mclust::adjustedRandIndex()]
 #' @export
 
 find_dup <- function (clust, ari = 1) {
-  # As NA is ignored by mclust::adjustedRandIndex()
+  # as NA is ignored by mclust::adjustedRandIndex()
   clust[is.na(clust)] <- 0
   
   # number of solutions
@@ -1067,8 +1060,8 @@ find_dup <- function (clust, ari = 1) {
 #' 
 #' @inheritParams blob_search_iter
 #' @inheritParams blob_search
-#' @params r_range a numeric vector of length 2 indicating the lower and upper bounds of the relative spatial weight. They must be \eqn{[0,1]}.
-#' @params run an integer of the number of runs.
+#' @param r_range a numeric vector of length 2 indicating the lower and upper bounds of the relative spatial weight. They must be \eqn{[0,1]}.
+#' @param run an integer of the number of runs. Default is 10L.
 #' @details
 #' When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
 #' 
@@ -1097,18 +1090,19 @@ find_dup <- function (clust, ari = 1) {
 #'   \item \code{trace}: a data frame of summary statistics for tracing.
 #'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
 #' }
-#' @seealso [sf::st_as_sf()], [lhs::randomLHS()], [future::future], [future.apply::future.apply]
+#' @seealso [sf::st_as_sf()], [lhs::randomLHS()], [mclust::adjustedRandIndex()], [future::future], [future.apply::future.apply]
 #' @export
-blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3, run = 10, space_distmat = NULL,
-                           space_distmethod = "geodesic", iter_method = "iterative", converge_ari = NULL,
+
+blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L,
+                           space_distmat = NULL, space_distmethod = "geodesic",
+                           iter_method = "iterative", converge_ari = NULL,
                            random_start = F, crs = 4326,
                            filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
-  # r_range: a vector of 2L indicating the lower and upper limit of relative weight
   
   if (length(r_range) > 1) {
     # LHS sampling for more evenly distributed parameters
     lhs_samples <- lhs::randomLHS(run,1)
-    # Scale to the range
+    # scale to the range
     r_samples <- sort(as.vector(min(r_range) + lhs_samples * (max(r_range) - min(r_range))))
   } else {
     r_samples <- rep(r_range, run)
@@ -1179,23 +1173,53 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3, run = 10, spac
   return(pop)
 }
 #------------------------------------------------------------------------------#
-# Optimising number of k ####
-#------------------------------------------------------------------------------#
-# It works by looping from k = 2 to sqrt(N) 
-blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3, run = 10, 
+#' Populate solutions by weighted sum scalarisation
+#' 
+#' @description
+#' This function populate solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' 
+#' @inheritParams blob_search_iter
+#' @inheritParams blob_search
+#' @inheritParams blob_populate
+#' @param k_range an integer vector of length 2 indicating the lower and upper bounds of the number of clusters. Default is NULL.
+#' @details
+#' When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
+#' 
+#' When `space_distmat` is specified. Distance matrix implementation will ignore `space_distmethod`.
+#' In that case, kernel method is applied to compute cluster centroids in space.
+#' 
+#' When the `"iterative"` method is specified in `iter_method`, one search is performed in every iteration. It runs until the last iteration or convergence. 
+#' When `converge_ari` is specified, convergence is defined and activated when ARI between the latest and the previous search is
+#' above the specified threshold and at least three iterations are run.
+#' 
+#' When the `"commonality"` method is specified in `iter_method`, in every iteration, three searches are run and the shared members are retained for the next iteration.
+#' After the last iteration or when searches converge, the search with the most shared members will be used to assign clusters.
+#' When `converge_ari` is specified, convergence is defined and activated when all ARIs between all two pairs of searches is
+#' above the specified threshold and at least three iterations are performed. 
+#' 
+#' The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+#' 
+#' Scalarisation is achieved by varying the relative spatial weight generated by Latin hypercube sampling using [lhs::randomLHS()].
+#' 
+#' To parallelise runs, [future.apply::future_lapply()] is implemented. See [future::future] and [future.apply::future.apply] for more information.
+#' 
+#' `k_range` is set to \eqn{[2, \lfloor\sqrt{N}\rfloor]} when NULL.
+#' 
+#' @inherit blob_populate return
+#' @seealso [sf::st_as_sf()], [lhs::randomLHS()], [mclust::adjustedRandIndex()], [future::future], [future.apply::future.apply]
+#' @export
+blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, run = 10L, 
                            space_distmat = NULL, space_distmethod = "geodesic",
                            iter_method = "iterative", converge_ari = NULL,
-                           random_start = F, filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
-  
-  # iter: iteration for each k
-  # run: run for each k
+                           random_start = F, crs = 4326,
+                           filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
   
   # number of samples
   N <- nrow(data)
   if (is.null(k_range)) {
-  	k_range <- integer(2)
-  	k_range[1] <- 2 # lower bound
-    k_range[2] <- floor(sqrt(N)) # upper bound, an heuristic to maximise information e.g. 100 points: 10 blobs, 10 points each 
+  	k_range <- integer(2L)
+  	k_range[1] <- 2L # lower bound
+    k_range[2] <- as.integer(floor(sqrt(N))) # upper bound, an heuristic to maximise information e.g. 100 points: 10 blobs, 10 points each 
   }
   
   pop_list <- list()
@@ -1234,8 +1258,16 @@ blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3, r
 }
 
 #------------------------------------------------------------------------------#
-# Multi-objective optimsiation (kind of) ####
+# Multi-objective optimisation (kind of) ####
 #------------------------------------------------------------------------------#
+#' Update "pop"
+#' 
+#' @description
+#' This function update and append the current batch to a list of returned objects from [blob_populate()] or [blob_kpopulate()], from the previous batch.
+#' @param pop_old a list of objects returned from [blob_populate()] or [blob_kpopulate()] from the previous batch.
+#' @param pop a list of objects returned from [blob_populate()] or [blob_kpopulate()] from the current batch.
+#' @inherit blob_populate return
+
 pop_update <- function(pop_old, pop) {
   # append pop
   pop <- Map(rbind, pop_old, pop)
@@ -1282,6 +1314,20 @@ pop_update <- function(pop_old, pop) {
   return(pop)
 }
 #------------------------------------------------------------------------------#
+#' Evaluate multi-objective optimisation performance
+#' 
+#' @description
+#' This function evaluates multi-objective optimisation (MOO) performance.
+#' 
+#' @param pop_pareto_objspace_list a list of data frames of the objective space from each batch.
+#' @details
+#' The quality indicators include IGD, IGD+ and hypervolume commonly used in MOO.
+#' They are computed using [moocore::igd()], [moocore::igd_plus()], and [moocore::hypervolume()]. See [moocore::moocore] for more information.
+#' 
+#' The lower and upper bounds for normalisation are extracted from the Pareto front considering all batches.
+#' @seealso [moocore::moocore]
+#' @return a data frame of MOO quality indicators.
+
 eval_moo <- function(pop_pareto_objspace_list) {
   n_batch <- length(pop_pareto_objspace_list)
   # last pareto objspace to set upper and lower limits
@@ -1325,6 +1371,19 @@ eval_moo <- function(pop_pareto_objspace_list) {
   return(moo_quality)
 }
 #------------------------------------------------------------------------------#
+#' Parse objective parameter
+#' 
+#' @description
+#' This function parses `obj` string vector for [blob_moo()].
+#' @param obj a string vector of objectives.
+#' @details
+#' The leading "-" (minus) is used to indicate maximisation of the objective.
+#' @return a list of the following objects.
+#' \itemize{
+#'   \item \code{obj}: a string vector of parsed objectives.
+#'   \item \code{maximise_obj_idx}: an numeric vector of indices of the objective to be maximised.
+#' }
+
 parse_obj <- function(obj) {
   maximise_obj_idx <- grep(pattern = "^-", obj)
   obj <- sub("^-", "", obj)
@@ -1333,6 +1392,25 @@ parse_obj <- function(obj) {
 }
 
 #------------------------------------------------------------------------------#
+#' Append MOO output
+#' 
+#' @description
+#' This function appends all multi-objective optimsation (MOO) related output.
+#' 
+#' @inheritParams pop_update
+#' @inheritParams parse_obj
+#' @param pareto_idx a numeric vector of indices of Pareto optimal solutions
+#' @param moo_quality a data frame of MOO quality indicators.
+#' @return a list of the following objects.
+#' \itemize{
+#'   \item \code{clust}: a numeric matrix of cluster assignments. Each row is a Pareto optimal solution.
+#'   \item \code{summary}: a data frame of summary statistics.
+#'   \item \code{trace}: a data frame of summary statistics for tracing.
+#'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+#'   \item \code{clust_idx}: a numeric vector of indices of cluster assignment.
+#'   \item \code{obj}: a string vector of objectives.
+#' }
+
 append_moo_out <- function(pop, obj, pareto_idx, moo_quality) {
   # create a column in summary to indicate Pareto front solutions
   pop$summary$pareto <- 0
@@ -1354,9 +1432,15 @@ append_moo_out <- function(pop, obj, pareto_idx, moo_quality) {
 }
 
 #------------------------------------------------------------------------------#
+#' Filter similar Pareto optimal solutions
+#' 
+#' @description
+#' This function filters Pareto optimal solutions and returns an updated [blob_moo()] output.
+#' The order of `obj` indicates the importance in ranking the solutions when considering which solutions to keep in the face of similarity.
+#' @inheritParams pop_update
+#' @inheritParams find_dup
+#' @inherit append_moo_out return
 filter_pareto_similar <- function(pop, ari) {
-  
-  # how not to rely on pareto_objspace but only pop$summary? so we can simplify the output
   # parse parameter obj to get the column indices and parsed obj names
   parse_obj_out <- parse_obj(pop$obj)
   maximise_obj_idx <- parse_obj_out$maximise_obj_idx
@@ -1432,8 +1516,50 @@ filter_pareto_similar <- function(pop, ari) {
 }
 
 #------------------------------------------------------------------------------#
-blob_moo <- function (data, k = NULL, k_range = NULL, r_range = c(0.5,1), iter = 3, max_run = 500, run = 100, space_distmethod = "geodesic",
-                      space_distmat = NULL, iter_method = "iterative", converge_ari = NULL,
+#' Optimise spatiotemporal clustering 
+#' 
+#' @description
+#' This function populate solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' 
+#' @inheritParams blob_search_iter
+#' @inheritParams blob_search
+#' @inheritParams blob_populate
+#' @inheritParams blob_kpopulate
+#' @param obj a string vector of objectives. The order should follow the importance in descending order when `pareto_similar_ari` is specified.
+#' @param max_run an integer of the number of maximum runs for all batches. Default is 500L
+#' @param run an integer of the number of runs for a single batch. Default is 100L.
+#' @param pareto_similar_ari a numeric value of Adjusted Rand Index (ARI) that sets similarity threshold between two Pareto optimal solutions. It must be \eqn{[0,1]}. Default is NULL.
+#' @details
+#' When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
+#' 
+#' When `space_distmat` is specified. Distance matrix implementation will ignore `space_distmethod`.
+#' In that case, kernel method is applied to compute cluster centroids in space.
+#' 
+#' When the `"iterative"` method is specified in `iter_method`, one search is performed in every iteration. It runs until the last iteration or convergence. 
+#' When `converge_ari` is specified, convergence is defined and activated when ARI between the latest and the previous search is
+#' above the specified threshold and at least three iterations are run.
+#' 
+#' When the `"commonality"` method is specified in `iter_method`, in every iteration, three searches are run and the shared members are retained for the next iteration.
+#' After the last iteration or when searches converge, the search with the most shared members will be used to assign clusters.
+#' When `converge_ari` is specified, convergence is defined and activated when all ARIs between all two pairs of searches is
+#' above the specified threshold and at least three iterations are performed. 
+#' 
+#' The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+#' 
+#' Scalarisation is achieved by varying the relative spatial weight generated by Latin hypercube sampling using [lhs::randomLHS()].
+#' 
+#' To parallelise runs, [future.apply::future_lapply()] is implemented. See [future::future] and [future.apply::future.apply] for more information.
+#' 
+#' `k_range` is set to \eqn{[2, \lfloor\sqrt{N}\rfloor]} when NULL.
+#' 
+#' The number of batches is determined by `max_run` and `run`. Each batch will consist of runs specified in `run` until `max_run` is reached.
+#' @inherit blob_populate return
+#' @seealso [sf::st_as_sf()], [lhs::randomLHS()], [mclust::adjustedRandIndex()], [future::future], [future.apply::future.apply]
+#' @export
+
+blob_moo <- function (data, k = NULL, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_run = 500L, run = 100L,
+                      space_distmethod = "geodesic", space_distmat = NULL, iter_method = "iterative",
+                      converge_ari = NULL, crs = 4326,
                       filter_intersects = T, filter_clustsize = T, max_na = 0.05,
                       obj = NULL, pareto_similar_ari = NULL, ...) {
   
@@ -1486,11 +1612,11 @@ blob_moo <- function (data, k = NULL, k_range = NULL, r_range = c(0.5,1), iter =
     # populate a bunch of solutions
     if (!is.null(k)) {
       pop <- blob_populate(data = data, k = k, r_range = r_range, iter = iter, run = RUN[i], space_distmethod = space_distmethod,
-                           space_distmat = space_distmat, iter_method = iter_method, converge_ari = converge_ari,
+                           space_distmat = space_distmat, iter_method = iter_method, converge_ari = converge_ari, crs = crs,
                            filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
     } else {
       pop <- blob_kpopulate(data = data, k_range = k_range, r_range = r_range, iter = iter, run = RUN[i], space_distmethod = space_distmethod,
-                            space_distmat = space_distmat, iter_method = iter_method, converge_ari = converge_ari,
+                            space_distmat = space_distmat, iter_method = iter_method, converge_ari = converge_ari, crs = crs,
                             filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
     }
     
@@ -1577,11 +1703,16 @@ blob_moo <- function (data, k = NULL, k_range = NULL, r_range = c(0.5,1), iter =
 #------------------------------------------------------------------------------#
 # Simulate data ####
 #------------------------------------------------------------------------------#
-# Generate coordinates on a circle line
+#' Generate coordinates on a circle outline
+#' 
+#' @description
+#' This function generates coordinates of equal distances on a circle outline centred at (0,0).
+#' @param radius a numeric value of radius from the the centre.
+#' @param n an integer of the number of vertices. 
+#' @return a numeric matrix of coordinates.
+#' @export
+
 gen_circle_coords <- function(radius, n) {
-  # radius: a numeric of the radius
-  # n: an integer of the number of vertices
-  
   # Generate angles for each vertex
   angles <- seq(0, 2 * pi, length.out = n + 1)[-1]  # Exclude the last angle (2*pi)
   
@@ -1595,12 +1726,20 @@ gen_circle_coords <- function(radius, n) {
   return(coords)
 }
 #------------------------------------------------------------------------------#
-# Generate clusters of Guassian data
+#' Generate Gaussian data clusters
+#' 
+#' @description
+#' This function generates Gaussian data clusters.
+#' @param n an integer of the number of clusters
+#' @param size an integer vector of sizes of a cluster. If an integer value is supplied, all clusters will be of this size.
+#' @param center a data matrix or data frame of coordinates.
+#' @param ... these arguments include `sigma`.
+#' @param sigma a covariance matrix or a list of covariance matrices to specify different covariance matrices. See [mvtnorm::rmvnorm()].
+#' @return a data frame of coordinates with clusters as a column.
+#' @seealso [mvtnorm::rmvnorm()]
+#' @export
+
 gen_gaussian_data <- function(n, size, center = NULL, ...) {
-  # k: an integer indicating the number of clusters
-  # size: an integer indicating the size of the cluster. To generate unequal sized clusters, supply a vector of integers
-  # center: a data frame of coordinates. If none is given, it will be sampled randomly
-  
   args <- list(...)
   sigma <- args$sigma
   
@@ -1621,7 +1760,7 @@ gen_gaussian_data <- function(n, size, center = NULL, ...) {
         data[[i]] <- mvtnorm::rmvnorm(n = size[i], mean = center[i,], sigma = sigma[[i]])
       }
     }
-    # Label cluster
+    # label cluster
     data[[i]] <- cbind(data[[i]],i)
   }
   
