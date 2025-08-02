@@ -995,7 +995,7 @@ blob_search <- function(data, k, r, iter = 3L, space_distmat = NULL, space_distm
 #' Find duplicates
 #' 
 #' @description
-#' This function find duplicates in a set of cluster assignments. It uses [mclust::adjustedRandIndex()] to measure similarity.
+#' This function finds duplicates in a set of cluster assignments. It uses [mclust::adjustedRandIndex()] to measure similarity.
 #' 
 #' @param clust a numeric matrix of cluster assignments. Each row is an assignment.
 #' @param ari a numeric value of Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also [mclust::adjustedRandIndex()].
@@ -1056,7 +1056,7 @@ find_dup <- function (clust, ari = 1) {
 #' Populate solutions by weighted sum scalarisation
 #' 
 #' @description
-#' This function populate solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' This function populates solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
 #' 
 #' @inheritParams blob_search_iter
 #' @inheritParams blob_search
@@ -1176,7 +1176,7 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L,
 #' Populate solutions by weighted sum scalarisation
 #' 
 #' @description
-#' This function populate solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' This function populates solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
 #' 
 #' @inheritParams blob_search_iter
 #' @inheritParams blob_search
@@ -1519,7 +1519,7 @@ filter_pareto_similar <- function(pop, ari) {
 #' Optimise spatiotemporal clustering 
 #' 
 #' @description
-#' This function populate solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' This function populates solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
 #' 
 #' @inheritParams blob_search_iter
 #' @inheritParams blob_search

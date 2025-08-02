@@ -21,7 +21,7 @@ a list of the following objects.
 }
 }
 \description{
-This function find duplicates in a set of cluster assignments. It uses \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}} to measure similarity.
+This function finds duplicates in a set of cluster assignments. It uses \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}} to measure similarity.
 }
 \seealso{
 \code{\link[base:table]{base::table()}}, \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}}

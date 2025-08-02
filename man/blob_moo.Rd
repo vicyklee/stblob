@@ -70,7 +70,7 @@ a list of the following objects.
 }
 }
 \description{
-This function populate solutions by weighted sum scalarisation of the bi-objective function in \code{\link[=blob_search]{blob_search()}} for a given k.
+This function populates solutions by weighted sum scalarisation of the bi-objective function in \code{\link[=blob_search]{blob_search()}} for a given k.
 }
 \details{
 When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
