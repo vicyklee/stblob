@@ -30,6 +30,7 @@ savePDF <- function(p, file, width, height, ...) {
 #' @param alpha See <[`aes-colour-fill-alpha`][ggplot2::aes_colour_fill_alpha()]>.
 #' @return a ggplot.
 #' @seealso [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
+#' @importFrom magrittr %>%
 #' @export
 
 plot_2d_objspace <- function (pop, obj, colour, normalise = T, palette = NULL, alpha = 0.8) {
@@ -97,6 +98,7 @@ plot_2d_objspace <- function (pop, obj, colour, normalise = T, palette = NULL, a
 #' @param palette See `value` of [ggplot2::scale_colour_manual()]. Default is NULL. This uses the palette presets from [MetBrewer::met.brewer()].
 #' @return a ggplot.
 #' @seealso [sf::st_as_sf()], [sf::st_transform()], [ggplot2::labs()], [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
+#' @importFrom magrittr %>%
 #' @export
 
 plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035, buffer = 500000, lab = NULL, palette = NULL) {
@@ -196,6 +198,7 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
 #' @param palette See `value` of [ggplot2::scale_colour_manual()]. Default is NULL. This uses the palette presets from [MetBrewer::met.brewer()].
 #' @return a ggplot.
 #' @seealso [ggplot2::labs()], [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
+#' @importFrom magrittr %>%
 #' @export
 
 plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palette = NULL) {
@@ -240,6 +243,7 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
 #' @param colour a string of the attribute to be coloured. It must be "r", "batch" or "k_o".
 #' @return a ggplot.
 #' @seealso [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
+#' @importFrom magrittr %>%
 #' @export
 
 plot_trace <- function(pop, alpha = 0.8, colour, palette = NULL) {
@@ -275,6 +279,15 @@ plot_trace <- function(pop, alpha = 0.8, colour, palette = NULL) {
   return(p)
 }
 
+#' Pivot trace summary for plotting
+#' 
+#' @description
+#' This function pivots trace summary for plotting.
+#' @param df a data frame of trace summary.
+#' @return a pivoted data frame of trace summary.
+#' @seealso [tidyr::pivot_longer()]
+#' @importFrom magrittr %>%
+
 pivot_trace <- function (df) {
   stat <- c("space_wcss", "time_range_mean", "time_range_sd", "time_evenness_mean", "time_evenness_sd", "ari")
   df <- df %>%
@@ -294,6 +307,7 @@ pivot_trace <- function (df) {
 #' @inheritParams plot_2d_objspace
 #' @param indicator a string of MOO quality indicator. It must be either "igd", "igd_plus" or "hv".
 #' @return a ggplot.
+#' @importFrom magrittr %>%
 #' @export
 
 plot_moo_quality <- function(pop, indicator) {

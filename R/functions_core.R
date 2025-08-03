@@ -116,6 +116,7 @@ compute_spacestat <- function(space_distmat, clust_points, sigma) {
 #' @param clust a numeric vector of cluster assignment. Default is NULL when it is already present as a column in the data.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
 #' @return TRUE or FALSE
+#' @importFrom magrittr %>%
 #' @export
 
 intersects_bool <- function(data, clust = NULL, crs = 4326) {
