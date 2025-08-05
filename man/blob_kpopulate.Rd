@@ -13,11 +13,11 @@ blob_kpopulate(
   space_distmat,
   sigma,
   converge_ari = NULL,
-  random_start = F,
   crs = 4326,
   filter_intersects = T,
   filter_clustsize = T,
-  max_na = 0.05
+  max_na = 0.05,
+  ...
 )
 }
 \arguments{
@@ -37,8 +37,6 @@ blob_kpopulate(
 
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
-\item{random_start}{a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.}
-
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
 
 \item{filter_intersects}{a logical operator. Should an assignment with intersects in space be removed? Default is T.}
@@ -46,6 +44,11 @@ blob_kpopulate(
 \item{filter_clustsize}{a logical operator. Should a cluster below the critical size be assigned NA? Default is T.}
 
 \item{max_na}{a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.}
+
+\item{...}{the optional arguments include \code{random_start}.
+\itemize{
+\item \code{random_start}: a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.
+}}
 }
 \value{
 a list of the following objects.

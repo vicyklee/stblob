@@ -12,8 +12,8 @@ blob_search_iter(
   space_distmat,
   sigma,
   converge_ari = NULL,
-  random_start = F,
-  crs = 4326
+  crs = 4326,
+  ...
 )
 }
 \arguments{
@@ -31,9 +31,14 @@ blob_search_iter(
 
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
-\item{random_start}{a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.}
-
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
+
+\item{...}{the optional arguments include \code{random_start}.
+\itemize{
+\item \code{random_start}: a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.
+}}
+
+\item{random_start}{a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.}
 }
 \value{
 a list of the following objects.

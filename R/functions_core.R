@@ -467,6 +467,12 @@ compare_blobs <- function(b1, b2){
 #' @param converge_ari a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
 #' @param random_start a logical operator. Should random start or [start_blobs()] be used? Default is F.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] for geometry. Default is 4326.
+#' @param ... the optional arguments include `random_start`.
+#' \itemize{
+#'   \item \code{random_start}: a logical operator. Should random start or [start_blobs()] be used? Default is F.
+#' }
+#'
+#' 
 #' @details
 #' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
 #'
@@ -486,8 +492,12 @@ compare_blobs <- function(b1, b2){
 #' @seealso [sf::st_as_sf()]
 
 blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
-                             converge_ari = NULL, random_start = F, crs = 4326) {
+                             converge_ari = NULL, crs = 4326, ...) {
   
+  args <- list(...)
+  random_start <- args$random_start
+  
+  if (is.null(random_start)) random_start <- F
   if (random_start == T) {
     data <- as.data.frame(data)
     data$clust <- NA
@@ -569,7 +579,7 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
 #' @seealso [sf::st_as_sf()]
 
 blob_search_filter <- function(blob, space_distmat, sigma, crs,
-							   filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
+							                 filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
 
   N <- nrow(data)
 
@@ -659,13 +669,13 @@ blob_search_filter <- function(blob, space_distmat, sigma, crs,
 #' @export
 
 blob_search <- function(data, k, r, iter = 3L, space_distmat, sigma,
-					    converge_ari = NULL, random_start = F, crs = 4326,
-                        filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
+					              converge_ari = NULL, crs = 4326,
+                        filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
   
   # core iterative search
   blob <- blob_search_iter(data = data, k = k, r = r, iter = iter,
                            space_distmat = space_distmat, sigma = sigma,
-                           converge_ari = converge_ari, random_start = random_start, crs = crs)
+                           converge_ari = converge_ari, crs = crs, ...)
   
   # filter constraints
   blob <- blob_search_filter(blob, filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
@@ -780,8 +790,8 @@ find_dup <- function (clust, ari = 1) {
 #' @export
 
 blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, space_distmat, sigma,
-                           converge_ari = NULL, random_start = F, crs = 4326,
-                           filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
+                           converge_ari = NULL, crs = 4326,
+                           filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
   
   if (length(r_range) > 1) {
     # LHS sampling for more evenly distributed parameters
@@ -792,10 +802,13 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, sp
     r_samples <- rep(r_range, run)
   }
   
-  pop <- future.apply::future_lapply(r_samples, function (r) {
-    blob_search(data = data, k = k, r = r, iter = iter, space_distmat = space_distmat, sigma = sigma,
-                converge_ari = converge_ari, random_start = random_start, crs = crs,
-                filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
+  # progressr setup to time the following
+  p_populate <- progressr::progressor(along = 1:length(r_samples))
+  pop <- future.apply::future_lapply(1:length(r_samples), function (i) {
+    p_populate(sprintf("run = %g", i))
+    blob_search(data = data, k = k, r = r_samples[i], iter = iter, space_distmat = space_distmat, sigma = sigma,
+                converge_ari = converge_ari, crs = crs,
+                filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
   }, future.seed = T)
   
   # count the runs that are filtered out, informative about the range of r to be searched
@@ -890,8 +903,8 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, sp
 
 blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, run = 10L, 
                            space_distmat, sigma,
-                           converge_ari = NULL, random_start = F, crs = 4326,
-                           filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
+                           converge_ari = NULL, crs = 4326,
+                           filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
   
   # number of samples
   N <- nrow(data)
@@ -902,11 +915,14 @@ blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, 
   }
   
   pop_list <- list()
+  # progressr setup to time the following
+  p_kpopulate <- progressr::progressor(along = k_range[1]:k_range[2])
   for (k in k_range[1]:k_range[2]) {
+    p_kpopulate(sprintf("k=%g"),k)
     pop_list[[k]] <- blob_populate(data = data, k = k, r_range = r_range, iter = iter, run = run, 
                               space_distmat = space_distmat, sigma = sigma,
-                              converge_ari = converge_ari, random_start = random_start, crs = crs,
-                              filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
+                              converge_ari = converge_ari, crs = crs,
+                              filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
     
     # if no solution for a given k, stop the loop
     if (is.null(pop_list[[k]]$clust)) {
@@ -921,7 +937,7 @@ blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, 
   pop <- do.call(rbind, pop_list)
   
   summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) cbind(pop[ , "summary"][[i]], k_o = i + 1))
-  trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) cbind(pop[ , "trace"][[i]], k_o = i + 1)) #####c
+  trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) cbind(pop[ , "trace"][[i]], k_o = i + 1)) 
   clust_list <- pop[ ,"clust"]
   n_filtered_list <- pop[ , "n_filtered"]
 
@@ -1220,8 +1236,9 @@ filter_pareto_similar <- function(pop, ari) {
 #' @param max_run an integer of the number of maximum runs for all batches. Default is 500L
 #' @param run an integer of the number of runs for a single batch. Default is 100L.
 #' @param pareto_similar_ari a numeric value of Adjusted Rand Index (ARI) that sets similarity threshold between two Pareto optimal solutions. It must be \eqn{[0,1]}. Default is NULL.
-#' @param ... the optional arguments include `k` and `obj`.
+#' @param ... the optional arguments include `random_start`, `k` and `obj`.
 #' \itemize{
+#'   \item \code{random_start}: a logical operator. Should random start or [start_blobs()] be used? Default is F.
 #'   \item \code{k}: an integer of the number of clusters. Use this instead of k_range if you only want to perform MOO for a given k.
 #'   \item \code{obj}: a string vector of objectives. The order should follow the importance in descending order when `pareto_similar_ari` is specified.
 #' }
@@ -1252,7 +1269,7 @@ filter_pareto_similar <- function(pop, ari) {
 
 blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_run = 500L, run = 100L,
                       space_distmat, sigma = sigma,
-                      converge_ari = NULL, random_start = F, crs = 4326,
+                      converge_ari = NULL, crs = 4326,
                       filter_intersects = T, filter_clustsize = T, max_na = 0.05,
                       pareto_similar_ari = NULL, ...) {
                       
@@ -1303,7 +1320,10 @@ blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_r
   #-------------------------------------------------------------------#
   #-------------------------------------------------------------------#
   # main loop to compare appending batches ####
+  # progressr setup to time the following
+  p_moo <- progressr::progressor(along = 1:length(RUN))
   for (i in 1:length(RUN)) {
+    p_moo(sprintf("batch = %g", i))
     #-------------------------------------------------------------------#
     #-------------------------------------------------------------------#
     # populate a bunch of solutions
@@ -1311,13 +1331,13 @@ blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_r
     if (!is.null(k) & is.null(k_range)) {
       pop <- blob_populate(data = data, k = k, r_range = r_range, iter = iter, run = RUN[i],
                            space_distmat = space_distmat, sigma = sigma,
-                           converge_ari = converge_ari, random_start = random_start, crs = crs,
-                           filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
+                           converge_ari = converge_ari, crs = crs,
+                           filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
     } else {
       pop <- blob_kpopulate(data = data, k_range = k_range, r_range = r_range, iter = iter, run = RUN[i],
                             space_distmat = space_distmat, sigma = sigma,
                             converge_ari = converge_ari, random_start = random_start, crs = crs,
-                            filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
+                            filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
     }
     
     
