@@ -1391,7 +1391,7 @@ blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_r
     } else {
       pop <- blob_kpopulate(data = data, k_range = k_range, r_range = r_range, iter = iter, run = RUN[i],
                             space_distmat = space_distmat, sigma = sigma,
-                            converge_ari = converge_ari, random_start = random_start, crs = crs,
+                            converge_ari = converge_ari, crs = crs,
                             filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
     }
     
