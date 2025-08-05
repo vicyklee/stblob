@@ -4,7 +4,14 @@
 \alias{plot_2d_objspace}
 \title{Plot 2D objective space}
 \usage{
-plot_2d_objspace(pop, obj, colour, normalise = T, palette = NULL, alpha = 0.8)
+plot_2d_objspace(
+  pop,
+  obj,
+  colour = c("r", "batch", "k_o", "pareto"),
+  normalise = T,
+  palette = NULL,
+  alpha = 0.8
+)
 }
 \arguments{
 \item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}

@@ -4,7 +4,7 @@
 \alias{plot_trace}
 \title{Plot trace summary}
 \usage{
-plot_trace(pop, alpha = 0.8, colour, palette = NULL)
+plot_trace(pop, alpha = 0.8, colour = c("r", "batch", "k_o"), palette = NULL)
 }
 \arguments{
 \item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}

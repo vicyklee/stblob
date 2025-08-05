@@ -4,7 +4,7 @@
 \alias{plot_moo_quality}
 \title{Plot multi-objective optimisation quality}
 \usage{
-plot_moo_quality(pop, indicator)
+plot_moo_quality(pop, indicator = c("igd", "igd_plus", "hv"))
 }
 \arguments{
 \item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}

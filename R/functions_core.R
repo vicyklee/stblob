@@ -15,6 +15,7 @@
 #' @export
 
 compute_distmat <- function(data, method = "geodesic") {
+  method <- match.arg(method, choices = c("geodesic", "euclidean"))
   data <- as.matrix(data)
   
   if (method == "geodesic") {

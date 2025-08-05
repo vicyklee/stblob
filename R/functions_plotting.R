@@ -33,7 +33,9 @@ savePDF <- function(p, file, width, height, ...) {
 #' @importFrom magrittr %>%
 #' @export
 
-plot_2d_objspace <- function (pop, obj, colour, normalise = T, palette = NULL, alpha = 0.8) {
+plot_2d_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"), normalise = T, palette = NULL, alpha = 0.8) {
+  colour <- match.arg(colour)
+
   objspace <- pop$summary %>%
     dplyr::select(c(dplyr::all_of(obj), "pareto", "r", "batch", "k_o")) %>%
     dplyr::mutate(pareto = as.factor(pareto),
@@ -102,6 +104,7 @@ plot_2d_objspace <- function (pop, obj, colour, normalise = T, palette = NULL, a
 #' @export
 
 plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035, buffer = 500000, lab = NULL, palette = NULL) {
+  space <- match.arg(space, choices = c("earth", "euclidean"))
   
   clust_levels <- levels(as.factor(clust))
   if (is.null(palette)) {
@@ -202,6 +205,8 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
 #' @export
 
 plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palette = NULL) {
+  orientation <- match.arg(orientation, choices = c("landscape", "portrait"))
+
   clust_levels <- levels(as.factor(clust))
   if (is.null(palette)) {
     clust_cols <- MetBrewer::met.brewer("Hokusai3", n = length(clust_levels)) 
@@ -246,7 +251,9 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
 #' @importFrom magrittr %>%
 #' @export
 
-plot_trace <- function(pop, alpha = 0.8, colour, palette = NULL) {
+plot_trace <- function(pop, alpha = 0.8, colour = c("r", "batch", "k_o"), palette = NULL) {
+  colour <- match.arg(colour)
+
   trace <- pop$trace %>% pivot_trace()
   p <- ggplot2::ggplot(trace) +
     ggplot2::geom_line(ggplot2::aes(x = iter, y = value, group = interaction(stat, run, batch, r, k_o),
@@ -310,7 +317,8 @@ pivot_trace <- function (df) {
 #' @importFrom magrittr %>%
 #' @export
 
-plot_moo_quality <- function(pop, indicator) {
+plot_moo_quality <- function(pop, indicator = c("igd", "igd_plus", "hv")) {
+  indicator <- match.arg(indicator)
   moo_quality <- cbind(batch = as.integer(1:nrow(pop$moo_quality)), pop$moo_quality)
   ggplot2::ggplot(moo_quality) +
     ggplot2::geom_line(ggplot2::aes(x = batch, y = .data[[indicator]]), colour = "#5a97c1") +
