@@ -4,26 +4,18 @@
 \alias{eval_blobs}
 \title{Clustering evaluation}
 \usage{
-eval_blobs(
-  data,
-  space_distmat = NULL,
-  space_distmethod = "geodesic",
-  crs = 4326,
-  ...
-)
+eval_blobs(data, space_distmat, sigma, crs = 4326)
 }
 \arguments{
 \item{data}{a data frame.}
 
 \item{space_distmat}{a numeric spatial distance matrix. Default is NULL.}
 
-\item{space_distmethod}{a string of method used for distance computation. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
+\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}. It must be specified when \code{space_distmat} is supplied.}
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
 
-\item{...}{these arguments include \code{sigma}.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{rbf()}. It must be specified when \code{space_distmat} is supplied.}
+\item{space_distmethod}{a string of method used for distance computation. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
 }
 \value{
 a list of the following objects.

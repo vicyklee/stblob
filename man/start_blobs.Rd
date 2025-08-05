@@ -2,25 +2,20 @@
 % Please edit documentation in R/functions_core.R
 \name{start_blobs}
 \alias{start_blobs}
-\title{Assign the starting cluster members}
+\title{Assign the starting cluster members by approximating the maximum spatial separation}
 \usage{
-start_blobs(data, k, space_distmat = NULL, space_distmethod = "geodesic")
+start_blobs(data, k, space_distmat)
 }
 \arguments{
 \item{data}{a data matrix or data frame.}
 
-\item{k}{an integer of the number of clusters}
+\item{k}{an integer of the number of clusters.}
 
-\item{space_distmat}{a numeric spatial distance matrix. Default is NULL.}
-
-\item{space_distmethod}{a string of the method for distance computation. It must be either "geodesic" or "euclidean". Default is "geodesic".}
+\item{space_distmat}{a numeric spatial distance matrix.}
 }
 \value{
 a data frame with assigned starting clusters as a column.
 }
 \description{
-Assign the starting cluster members by approximating the maximum spatial distant points. A wrapper of \code{start_blobs_otf} and \code{start_blobs_distmat}.
-}
-\details{
-When \code{space_distmat} is specified. Distance matrix implementation will ignore \code{space_distmethod}.
+Assign the starting cluster members by approximating the maximum spatial separation between points.
 }

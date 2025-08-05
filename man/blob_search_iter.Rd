@@ -2,23 +2,22 @@
 % Please edit documentation in R/functions_core.R
 \name{blob_search_iter}
 \alias{blob_search_iter}
-\title{Core local-search algorithm - "iterative" method for convergence}
+\title{Core local-search algorithm}
 \usage{
 blob_search_iter(
   data,
   k,
   r,
   iter = 3L,
-  space_distmat = NULL,
-  space_distmethod = "geodesic",
+  space_distmat,
+  sigma,
   converge_ari = NULL,
   random_start = F,
-  crs = 4326,
-  ...
+  crs = 4326
 )
 }
 \arguments{
-\item{data}{a data matrix or data frame with assigned (starting) clusters as a column.}
+\item{data}{a data matrix or data frame.}
 
 \item{k}{an integer of the number of clusters.}
 
@@ -26,19 +25,15 @@ blob_search_iter(
 
 \item{iter}{an integer of the number of iterations. Default is 3L.}
 
-\item{space_distmat}{a numeric spatial distance matrix. Default is NULL.}
+\item{space_distmat}{a numeric spatial distance matrix.}
 
-\item{space_distmethod}{a string of the method for distance computation. It must be either "geodesic" or "euclidean". Default is "geodesic".}
+\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
 
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
 \item{random_start}{a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.}
 
-\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
-
-\item{...}{these arguments include \code{sigma}.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}. It must be specified when \code{space_distmat} is supplied.}
+\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
 }
 \value{
 a list of the following objects.
@@ -50,16 +45,16 @@ a list of the following objects.
 }
 }
 \description{
-This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r.
-Convergence is directed by the "iterative" method.
+This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in a iterative fashion.
 }
 \details{
-When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
+Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
 
-When \code{space_distmat} is specified. Distance matrix implementation will ignore \code{space_distmethod}.
-In that case, kernel method is applied to compute cluster centroids in space.
+Clusters are assigned in every iteration. It iterates until the set length or convergence.
 
-When the "iterative" method is specified, one search is performed in every iteration. It runs until the last iteration or convergence.
 When \code{converge_ari} is specified, convergence is defined and activated when ARI between the latest and the previous search is
 above the specified threshold and at least three iterations are run.
+}
+\seealso{
+\code{\link[sf:st_as_sf]{sf::st_as_sf()}}
 }

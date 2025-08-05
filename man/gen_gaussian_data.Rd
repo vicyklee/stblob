@@ -13,9 +13,10 @@ gen_gaussian_data(n, size, center = NULL, ...)
 
 \item{center}{a data matrix or data frame of coordinates.}
 
-\item{...}{these arguments include \code{sigma}.}
-
-\item{sigma}{a covariance matrix or a list of covariance matrices to specify different covariance matrices. See \code{\link[mvtnorm:Mvnorm]{mvtnorm::rmvnorm()}}.}
+\item{...}{the optional argument includes \code{sigma}.
+\itemize{
+\item \code{sigma}: a covariance matrix or a list of covariance matrices to specify different covariance matrices. See \code{\link[mvtnorm:Mvnorm]{mvtnorm::rmvnorm()}}.
+}}
 }
 \value{
 a data frame of coordinates with clusters as a column.

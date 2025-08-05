@@ -4,25 +4,18 @@
 \alias{find_blobs}
 \title{Assign clusters}
 \usage{
-find_blobs(
-  data,
-  k,
-  r,
-  space_distmat = NULL,
-  space_distmethod = "geodesic",
-  ...
-)
+find_blobs(data, k, r, space_distmat, sigma)
 }
 \arguments{
-\item{data}{a data matrix or data frame with assigned (starting) clusters as a column.}
+\item{data}{a data matrix or data frame.}
 
 \item{k}{an integer of the number of clusters.}
 
 \item{r}{an numeric value of spatial relative weight. It must be \eqn{[0,1]}.}
 
-\item{space_distmat}{a numeric spatial distance matrix. Default is NULL.}
+\item{space_distmat}{a numeric spatial distance matrix.}
 
-\item{space_distmethod}{a string of the method for distance computation. It must be either "geodesic" or "euclidean". Default is "geodesic".}
+\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
 }
 \value{
 a data frame with assigned clusters as a column.
@@ -31,8 +24,5 @@ a data frame with assigned clusters as a column.
 This function assigns clusters for a given k and r.
 }
 \details{
-When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
-
-When \code{space_distmat} is specified. Distance matrix implementation will ignore \code{space_distmethod}.
-In that case, kernel method is applied to compute cluster centroids in space.
+Gaussian kernel is applied to compute cluster centroids in space.
 }

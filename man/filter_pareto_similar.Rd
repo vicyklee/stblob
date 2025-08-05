@@ -15,14 +15,15 @@ filter_pareto_similar(pop, ari)
 a list of the following objects.
 \itemize{
 \item \code{clust}: a numeric matrix of cluster assignments. Each row is a Pareto optimal solution.
-\item \code{summary}: a data frame of summary statistics.
-\item \code{trace}: a data frame of summary statistics for tracing.
+\item \code{summary}: a data frame of summary statistics of all feasible solutions.
+\item \code{trace}: a data frame of summary statistics for tracing of all feasible solutions.
 \item \code{n_filtered}: a data frame of numbers of filtered solutions.
-\item \code{clust_idx}: a numeric vector of indices of cluster assignment.
+\item \code{clust_idx}: a numeric vector of indices of Pareto optimal cluster assignment.
+\item \code{moo_quality}: a data frame of MOO quality indicators.
 \item \code{obj}: a string vector of objectives.
 }
 }
 \description{
 This function filters Pareto optimal solutions and returns an updated \code{\link[=blob_moo]{blob_moo()}} output.
-The order of \code{obj} indicates the importance in ranking the solutions when considering which solutions to keep in the face of similarity.
+The order of \code{obj} follows the importance in ranking the solutions when considering which solutions to keep in the face of similarity.
 }

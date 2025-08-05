@@ -2,33 +2,29 @@
 % Please edit documentation in R/functions_core.R
 \name{blob_moo}
 \alias{blob_moo}
-\title{Optimise spatiotemporal clustering}
+\title{Multi-objective optimisation (MOO) for spatiotemporal clustering}
 \usage{
 blob_moo(
   data,
-  k = NULL,
   k_range = NULL,
   r_range = c(0.5, 1),
   iter = 3L,
   max_run = 500L,
   run = 100L,
-  space_distmethod = "geodesic",
-  space_distmat = NULL,
-  iter_method = "iterative",
+  space_distmat,
+  sigma = sigma,
   converge_ari = NULL,
+  random_start = F,
   crs = 4326,
   filter_intersects = T,
   filter_clustsize = T,
   max_na = 0.05,
-  obj = NULL,
   pareto_similar_ari = NULL,
   ...
 )
 }
 \arguments{
-\item{data}{a data matrix or data frame with assigned (starting) clusters as a column.}
-
-\item{k}{an integer of the number of clusters.}
+\item{data}{a data matrix or data frame.}
 
 \item{k_range}{an integer vector of length 2 indicating the lower and upper bounds of the number of clusters. Default is NULL.}
 
@@ -40,54 +36,55 @@ blob_moo(
 
 \item{run}{an integer of the number of runs for a single batch. Default is 100L.}
 
-\item{space_distmethod}{a string of the method for distance computation. It must be either "geodesic" or "euclidean". Default is "geodesic".}
+\item{space_distmat}{a numeric spatial distance matrix.}
 
-\item{space_distmat}{a numeric spatial distance matrix. Default is NULL.}
+\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
 
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
-\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
+\item{random_start}{a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.}
+
+\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
 
 \item{filter_intersects}{a logical operator. Should an assignment with intersects in space be removed? Default is T.}
 
-\item{filter_clustsize}{a logical operator. Should a cluster below a critical size be assigned NA? Default is T.}
+\item{filter_clustsize}{a logical operator. Should a cluster below the critical size be assigned NA? Default is T.}
 
 \item{max_na}{a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.}
 
-\item{obj}{a string vector of objectives. The order should follow the importance in descending order when \code{pareto_similar_ari} is specified.}
-
 \item{pareto_similar_ari}{a numeric value of Adjusted Rand Index (ARI) that sets similarity threshold between two Pareto optimal solutions. It must be \eqn{[0,1]}. Default is NULL.}
 
-\item{...}{these arguments include \code{sigma}.}
+\item{...}{the optional arguments include \code{k} and \code{obj}.
+\itemize{
+\item \code{k}: an integer of the number of clusters. Use this instead of k_range if you only want to perform MOO for a given k.
+\item \code{obj}: a string vector of objectives. The order should follow the importance in descending order when \code{pareto_similar_ari} is specified.
+}}
 }
 \value{
 a list of the following objects.
 \itemize{
-\item \code{clust}: a numeric matrix of cluster assignments. Each row is a solution.
-\item \code{summary}: a data frame of summary statistics.
-\item \code{trace}: a data frame of summary statistics for tracing.
+\item \code{clust}: a numeric matrix of cluster assignments. Each row is a Pareto optimal solution.
+\item \code{summary}: a data frame of summary statistics of all feasible solutions.
+\item \code{trace}: a data frame of summary statistics for tracing of all feasible solutions.
 \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+\item \code{clust_idx}: a numeric vector of indices of Pareto optimal cluster assignment.
+\item \code{moo_quality}: a data frame of MOO quality indicators.
+\item \code{obj}: a string vector of objectives.
 }
 }
 \description{
-This function populates solutions by weighted sum scalarisation of the bi-objective function in \code{\link[=blob_search]{blob_search()}} for a given k.
+This function populates solutions by weighted sum scalarisation of the bi-objective function in \code{\link[=blob_search]{blob_search()}},
+optimises multiple objectives under constraints and returns a set of Pareto optimal solutions together with MOO quality indicators.
 }
 \details{
-When distances are computed on the fly, kernel method cannot be applied to compute cluster centroids in space.
+Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
 
-When \code{space_distmat} is specified. Distance matrix implementation will ignore \code{space_distmethod}.
-In that case, kernel method is applied to compute cluster centroids in space.
+Clusters are assigned in every iteration. It iterates until the set length or convergence.
 
-When the \code{"iterative"} method is specified in \code{iter_method}, one search is performed in every iteration. It runs until the last iteration or convergence.
 When \code{converge_ari} is specified, convergence is defined and activated when ARI between the latest and the previous search is
 above the specified threshold and at least three iterations are run.
 
-When the \code{"commonality"} method is specified in \code{iter_method}, in every iteration, three searches are run and the shared members are retained for the next iteration.
-After the last iteration or when searches converge, the search with the most shared members will be used to assign clusters.
-When \code{converge_ari} is specified, convergence is defined and activated when all ARIs between all two pairs of searches is
-above the specified threshold and at least three iterations are performed.
-
-The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+The critical size of a cluster is defined as \eqn{\frac{N}{2k}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
 
 Scalarisation is achieved by varying the relative spatial weight generated by Latin hypercube sampling using \code{\link[lhs:randomLHS]{lhs::randomLHS()}}.
 
