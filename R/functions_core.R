@@ -579,7 +579,7 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
 #' @seealso [sf::st_as_sf()]
 
 blob_search_filter <- function(blob, space_distmat, sigma, crs,
-							                 filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
+                               filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
 
   N <- nrow(blob$data)
 
