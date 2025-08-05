@@ -581,7 +581,7 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
 blob_search_filter <- function(blob, space_distmat, sigma, crs,
 							                 filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
 
-  N <- nrow(data)
+  N <- nrow(blob$data)
 
   # 1. intersects
   if (filter_intersects == T) {
@@ -678,7 +678,8 @@ blob_search <- function(data, k, r, iter = 3L, space_distmat, sigma,
                            converge_ari = converge_ari, crs = crs, ...)
   
   # filter constraints
-  blob <- blob_search_filter(blob, filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
+  blob <- blob_search_filter(blob, space_distmat = space_distmat, sigma = sigma, crs = crs,
+                             filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
   
   return(blob)
 }
@@ -749,6 +750,81 @@ find_dup <- function (clust, ari = 1) {
   
   return(list(idx = idx, pairwise_ari = pairwise_ari, freq = freq, pairs_dup = pairs_dup))
 }
+#------------------------------------------------------------------------------#
+#' Convert a list of blob objects to a pop object
+#' 
+#' @description
+#' This function convert a list of blob objects to a pop object with combined output
+#' from [blob_search()] and counts of filtered solutions by category.
+#' 
+#' @param blob_list a list of output from [blob_search()]
+#' 
+#' @return a list of the following objects.
+#' \itemize{
+#'   \item \code{clust}: a numeric matrix of cluster assignments. Each row is a solution.
+#'   \item \code{summary}: a data frame of summary statistics.
+#'   \item \code{trace}: a data frame of summary statistics for tracing.
+#'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+#' }
+
+convert_to_pop <- function(blob_list) {
+  pop <- blob_list
+  # count the runs that are filtered out, informative about the range of r to be searched
+  filtered_intersects <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 1)
+  filtered_intersects <- sapply(filtered_intersects, function(x) if (length(x) != 1) x <- FALSE else x) 
+  filtered_intersects <- sum(filtered_intersects)
+  
+  filtered_size <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 2)
+  filtered_size <- sapply(filtered_size, function(x) if (length(x) != 1) x <- FALSE else x) 
+  filtered_size <- sum(filtered_size)
+  
+  filtered_k1 <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 3)
+  filtered_k1 <- sapply(filtered_k1, function(x) if (length(x) != 1) x <- FALSE else x) 
+  filtered_k1 <- sum(filtered_k1)
+  
+  # if blob returns 1 or 2, set NULL so rbind in the following step will omit them
+  pop <- lapply(pop, function(x) if(!is.list(x)) NULL else x)
+  # extract each element and add a column to indicate the run
+  pop <- do.call(rbind, pop) 
+  data_list <- lapply(seq_along(pop[, "data"]), function (i) cbind(pop[, "data"][[i]], run = i))
+  summary_list <- lapply(seq_along(pop[, "summary"]), function (i) cbind(pop[, "summary"][[i]], run = i))
+  trace_list <- lapply(seq_along(pop[, "trace"]), function (i) cbind(pop[, "trace"][[i]], run = i))
+  
+  # extract clust and append the run in the beginning of the vector
+  clust_list <- lapply(seq_along(data_list), function (i) data_list[[i]]$clust)
+  
+  # redundant to store the whole blob data frame at this step so only clust is kept as output from blobs
+  clust <- do.call(rbind, clust_list)
+  summary <- do.call(rbind, summary_list)
+  trace <- do.call(rbind, trace_list)
+  
+  # find and filter exact duplicates
+  filtered_dup <- 0
+  
+  if (!is.null(clust)) {
+    summary$dup <- 0
+    # Here, clust <- do.call(rbind, clust_list) must return a matrix even if there is only one solution
+    if (nrow(clust) > 1) {
+      dup <- find_dup(clust, ari = 1)
+      
+      if (length(dup$idx) > 0) {
+        # record the duplicate freq
+        summary$dup[as.numeric(names(dup$freq))] <- as.vector(dup$freq)
+        # filter the duplicates
+        clust <- clust[-dup$idx, , drop = F]
+        summary <- summary[-dup$idx, ]
+        trace <- trace[-which(trace$run %in% dup$idx),]
+        # record the total no. of dup filtered
+        filtered_dup <- length(dup$idx)
+      }
+    }
+  }
+  
+  n_filtered <- data.frame(intersects = filtered_intersects, size = filtered_size, k1 = filtered_k1, dup = filtered_dup)
+  
+  pop <- list(clust = clust, summary = summary, trace = trace, n_filtered = n_filtered)
+  return(pop)
+}
 
 #------------------------------------------------------------------------------#
 #' Populate solutions by weighted sum scalarisation
@@ -802,69 +878,13 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, sp
     r_samples <- rep(r_range, run)
   }
   
-  # progressr setup to time the following
-  p_populate <- progressr::progressor(along = 1:length(r_samples))
-  pop <- future.apply::future_lapply(1:length(r_samples), function (i) {
-    p_populate(sprintf("run = %g", i))
-    blob_search(data = data, k = k, r = r_samples[i], iter = iter, space_distmat = space_distmat, sigma = sigma,
+  blob_list <- future.apply::future_lapply(r_samples, function (r) {
+    blob_search(data = data, k = k, r = r, iter = iter, space_distmat = space_distmat, sigma = sigma,
                 converge_ari = converge_ari, crs = crs,
                 filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
   }, future.seed = T)
-  
-  # count the runs that are filtered out, informative about the range of r to be searched
-  filtered_intersects <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 1)
-  filtered_intersects <- sapply(filtered_intersects, function(x) if (length(x) != 1) x <- FALSE else x) 
-  filtered_intersects <- sum(filtered_intersects)
-  
-  filtered_size <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 2)
-  filtered_size <- sapply(filtered_size, function(x) if (length(x) != 1) x <- FALSE else x) 
-  filtered_size <- sum(filtered_size)
-  
-  filtered_k1 <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 3)
-  filtered_k1 <- sapply(filtered_k1, function(x) if (length(x) != 1) x <- FALSE else x) 
-  filtered_k1 <- sum(filtered_k1)
-  
-  # if blob returns 1 or 2, set NULL so rbind in the following step will omit them
-  pop <- lapply(pop, function(x) if(!is.list(x)) NULL else x)
-  # extract each element and add a column to indicate the run
-  pop <- do.call(rbind, pop)
-  data_list <- lapply(seq_along(pop[, "data"]), function (i) cbind(pop[, "data"][[i]], run = i))
-  summary_list <- lapply(seq_along(pop[, "summary"]), function (i) cbind(pop[, "summary"][[i]], run = i))
-  trace_list <- lapply(seq_along(pop[, "trace"]), function (i) cbind(pop[, "trace"][[i]], run = i))
-  
-  # extract clust and append the run in the beginning of the vector
-  clust_list <- lapply(seq_along(data_list), function (i) data_list[[i]]$clust)
-  
-  # redundant to store the whole blob data frame at this step so only clust is kept as output from blobs
-  clust <- do.call(rbind, clust_list)
-  summary <- do.call(rbind, summary_list)
-  trace <- do.call(rbind, trace_list)
-  
-  # find and filter exact duplicates
-  filtered_dup <- 0
-  
-  if (!is.null(clust)) {
-    summary$dup <- 0
-    # Here, clust <- do.call(rbind, clust_list) must return a matrix even if there is only one solution
-    if (nrow(clust) > 1) {
-      dup <- find_dup(clust, ari = 1)
-      
-      if (length(dup$idx) > 0) {
-        # record the duplicate freq
-        summary$dup[as.numeric(names(dup$freq))] <- as.vector(dup$freq)
-        # filter the duplicates
-        clust <- clust[-dup$idx, , drop = F]
-        summary <- summary[-dup$idx, ]
-        trace <- trace[-which(trace$run %in% dup$idx),]
-        # record the total no. of dup filtered
-        filtered_dup <- length(dup$idx)
-      }
-    }
-  }
-  
-  n_filtered <- data.frame(intersects = filtered_intersects, size = filtered_size, k1 = filtered_k1, dup = filtered_dup)
-
-  pop <- list(clust = clust, summary = summary, trace = trace, n_filtered = n_filtered)
+ 
+  pop <- convert_to_pop(blob_list)
 
   return(pop)
 }
@@ -913,26 +933,61 @@ blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, 
   	k_range[1] <- 2L # lower bound
     k_range[2] <- as.integer(floor(sqrt(N))) # upper bound, an heuristic to maximise information e.g. 100 points: 10 blobs, 10 points each 
   }
+  #-------------#
+  # sequential
+  # pop_list <- list()
+  # # progressr setup to time the following
+  # p_kpopulate <- progressr::progressor(along = k_range[1]:k_range[2])
+  # for (k in k_range[1]:k_range[2]) {
+  #   p_kpopulate(sprintf("k=%g", k))
+  #   pop_list[[k]] <- blob_populate(data = data, k = k, r_range = r_range, iter = iter, run = run, 
+  #                             space_distmat = space_distmat, sigma = sigma,
+  #                             converge_ari = converge_ari, crs = crs,
+  #                             filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
+  #   
+  #   # if no solution for a given k, stop the loop
+  #   if (is.null(pop_list[[k]]$clust)) {
+  #     pop_list[k] <- NULL
+  #     next # may be next vs break? assuming too overlap to pursue further
+  #   }
+  # }
+  # pop_list <- pop_list[-1] # as the loop starts at 2
+  #-------------#
+  # Map version
+  if (length(r_range) > 1) {
+    # LHS sampling for more evenly distributed parameters
+    lhs_samples <- lhs::randomLHS(run,1)
+    # scale to the range
+    r_samples <- sort(as.vector(min(r_range) + lhs_samples * (max(r_range) - min(r_range))))
+  } else {
+    r_samples <- rep(r_range, run)
+  }
   
-  pop_list <- list()
-  # progressr setup to time the following
-  p_kpopulate <- progressr::progressor(along = k_range[1]:k_range[2])
-  for (k in k_range[1]:k_range[2]) {
-    p_kpopulate(sprintf("k=%g"),k)
-    pop_list[[k]] <- blob_populate(data = data, k = k, r_range = r_range, iter = iter, run = run, 
-                              space_distmat = space_distmat, sigma = sigma,
-                              converge_ari = converge_ari, crs = crs,
-                              filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
-    
-    # if no solution for a given k, stop the loop
-    if (is.null(pop_list[[k]]$clust)) {
-      pop_list[k] <- NULL
-      next # may be next vs break? assuming too overlap to pursue further
-    }
+  a <- k_range[1]:k_range[2]
+  b <- r_samples
+  grid <- expand.grid(a = a, b = b)
+  blob_list <- future.apply::future_Map(function(k, r) {
+    list(
+      blob = blob_search(data = data, k = k, r = r, iter = iter, space_distmat = space_distmat, sigma = sigma,
+                  converge_ari = converge_ari, crs = crs,
+                  filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...),
+      k = k
+    )
+  }, grid$a, grid$b, future.seed = TRUE)
+  
+  # group runs of same k
+  pop_list <- vector("list", k_range[2])
+  for(i in 1:length(blob_list)) {
+    k <- blob_list[[i]][["k"]]
+    # append to pop_list
+    pop_list[[k]] <- append(pop_list[[k]], list(blob_list[[i]][["blob"]]))
   }
   
   pop_list <- pop_list[-1] # as the loop starts at 2
+  # convert to pop object for each k group
+  pop_list <- lapply(pop_list, convert_to_pop) 
   
+  #-------------#
   # extract each element and add a column to indicate the initial k
   pop <- do.call(rbind, pop_list)
   
