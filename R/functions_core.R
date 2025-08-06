@@ -79,7 +79,6 @@ compute_spacestat <- function(space_distmat, clust_points, sigma) {
 #'
 #' @return TRUE or FALSE
 #'
-#' @importFrom magrittr %>%
 #' @export
 
 intersects_bool <- function(data, clust = NULL, crs = 4326) {
