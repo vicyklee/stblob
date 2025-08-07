@@ -14,8 +14,6 @@ eval_blobs(data, space_distmat, sigma, crs = 4326)
 \item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}. It must be specified when \code{space_distmat} is supplied.}
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
-
-\item{space_distmethod}{a string of method used for distance computation. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
 }
 \value{
 a list of the following objects.
@@ -28,7 +26,5 @@ a list of the following objects.
 This function evaluates clustering performance and returns a summary and clusters that are below the critical size.
 }
 \details{
-When \code{space_distmat} is specified. Distance matrix implementation will ignore \code{space_distmethod}.
-
 The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data points and \eqn{k} is the number of clusters.
 }

@@ -37,8 +37,6 @@ blob_search_iter(
 \itemize{
 \item \code{random_start}: a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.
 }}
-
-\item{random_start}{a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.}
 }
 \value{
 a list of the following objects.

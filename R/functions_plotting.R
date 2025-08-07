@@ -6,16 +6,16 @@
 #' @description
 #' This function saves a plot as PDF. As [ggplot2::ggsave()] can be buggy with text spacing.
 #' @param p plot.
-#' @inheritDotParams grDevices::pdf file width height
-#' @param ... these include all additional arguments in [grDevices::pdf()].
+#' @inheritParams grDevices::pdf
+#' @inheritDotParams grDevices::pdf
 #' @seealso [grDevices::pdf()]
 #' @export
 
 savePDF <- function(p, file, width, height, ...) {
-  pdf(file = file, width = width, height = height, ...)
-  pdf.options(encoding = 'CP1250')
+  grDevices::pdf(file = file, width = width, height = height, ...)
+  grDevices::pdf.options(encoding = 'CP1250')
   print(p)
-  invisible(dev.off())
+  invisible(grDevices::dev.off())
 }
 
 #' Plot 2D objective space
@@ -115,8 +115,8 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
     data$clust <- as.factor(clust)
     p <- ggplot2::ggplot(data, ggplot2::aes(x = data[,1], y = data[,2], colour = clust, fill = clust)) +
       ggplot2::geom_point(alpha = 0.5, show.legend = F) +
-      ggplot2::scale_colour_manual(values = setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
       ggplot2::scale_x_continuous(breaks = scales::pretty_breaks()) +
       ggplot2::scale_y_continuous(breaks = scales::pretty_breaks()) +
       ggplot2::coord_fixed() +
@@ -148,8 +148,8 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
       ggplot2::geom_sf(data = world, alpha = 0.2) +
       ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
       ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) +
-      ggplot2::scale_colour_manual(values = setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
       ggplot2::xlab(lab[1]) +
       ggplot2::ylab(lab[2])
   }
@@ -180,8 +180,8 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
       ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
       ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
       ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = 3035) +
-      ggplot2::scale_colour_manual(values = setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
       ggplot2::xlab(lab[1]) +
       ggplot2::ylab(lab[2])
   }
@@ -216,21 +216,21 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
   if (orientation == "portrait") {
     p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
       ggridges::geom_density_ridges(alpha = 0.2, scale = 0.6, show.legend = F) +
-      ggplot2::geom_point(shape = "—", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
+      ggplot2::geom_point(shape = "\u2014", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
       ggplot2::theme(axis.text.x = ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), axis.title.x = ggplot2::element_blank()) +
       ggplot2::coord_flip() +
-      ggplot2::scale_colour_manual(values = setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
       ggplot2::xlab(lab)
   }
   
   if (orientation == "landscape") {
     p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
       ggridges::geom_density_ridges(alpha = 0.2, scale = 0.6, show.legend = F) +
-      ggplot2::geom_point(shape = "|", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
+      ggplot2::geom_point(shape = "\u2014", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
       ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank()) +
-      ggplot2::scale_colour_manual(values = setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
       ggplot2::xlab(lab)
   }
   

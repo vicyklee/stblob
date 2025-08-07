@@ -22,7 +22,7 @@ compute_distmat <- function(data, method = "geodesic") {
     distmat <- as.matrix(geosphere::distm(data, fun = geosphere::distGeo))
   }
   if (method == "euclidean") {
-    distmat <- as.matrix(dist(data, method = "euclidean"))
+    distmat <- as.matrix(stats::dist(data, method = "euclidean"))
   }
   return(distmat)
 }
@@ -131,7 +131,7 @@ reorder_clust <- function(clust) {
   n_row <- nrow(sets)
   n_row_na <- length(unique(which(is.na(sets), arr.ind = T)[,"row"]))
   if (n_row_na > 0) {
-    sets <- as.matrix(na.omit(sets))
+    sets <- as.matrix(stats::na.omit(sets))
     sets <- rbind(sets,NA)
   }
   
@@ -152,13 +152,10 @@ reorder_clust <- function(clust) {
 #'
 #' @param data a data frame.
 #' @param space_distmat a numeric spatial distance matrix. Default is NULL.
-#' @param space_distmethod a string of method used for distance computation. It must be one of "geodesic" or "euclidean". Default is "geodesic".
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
 #' @param sigma a numeric value of sigma passed on to [rbf()]. It must be specified when `space_distmat` is supplied.
 #'
 #' @details
-#' When `space_distmat` is specified. Distance matrix implementation will ignore `space_distmethod`.
-#' 
 #' The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data points and \eqn{k} is the number of clusters.
 #'
 #' @return a list of the following objects.
@@ -173,7 +170,7 @@ eval_blobs <- function(data, space_distmat, sigma, crs = 4326) {
   # total number of points
   N <- nrow(data)
   # total number of clusters
-  k <- length(unique(na.omit(data$clust))) # NA is excluded
+  k <- length(unique(stats::na.omit(data$clust))) # NA is excluded
   # initialise empty vectors 
   space_ss <- time_range <- time_evenness <- n <- numeric(k)
   
@@ -188,7 +185,7 @@ eval_blobs <- function(data, space_distmat, sigma, crs = 4326) {
     space_ss[j] <- sum(compute_spacestat(space_distmat = space_distmat, clust_points = clust_points, sigma = sigma)[clust_points])
     # temporal objectives
     time_range[j] <- max(data_k[ ,3], na.rm = T) - min(data_k[ ,3], na.rm = T)
-    time_evenness[j] <- 1 / (1 + var(diff(sort(data_k[ ,3])))) # NA if there are fewer than 3 data points
+    time_evenness[j] <- 1 / (1 + stats::var(diff(sort(data_k[ ,3])))) # NA if there are fewer than 3 data points
     # other constraint related statistics
     n[j] <- length(clust_points)
   }
@@ -196,12 +193,12 @@ eval_blobs <- function(data, space_distmat, sigma, crs = 4326) {
   # Calculate the summary statistics
   space_wcss <- sum(space_ss)
   time_range_mean <- mean(time_range, na.rm = TRUE)
-  time_range_sd <- sd(time_range, na.rm = TRUE)
+  time_range_sd <- stats::sd(time_range, na.rm = TRUE)
   time_evenness_mean <- mean(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
-  time_evenness_sd <- sd(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
+  time_evenness_sd <- stats::sd(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
   size_diff <- max(n, na.rm = TRUE) - min(n, na.rm = TRUE)
   size_mean <- mean(n, na.rm = TRUE)
-  size_sd <- sd(n, na.rm = TRUE)
+  size_sd <- stats::sd(n, na.rm = TRUE)
   
   # evaluate failed clust
   # n.points must be > N / k / 2
@@ -258,7 +255,7 @@ start_blobs <- function(data, k, space_distmat) {
   for(n in 1:N){
     i <- sort(sample(1:nrow(data), size = k)) # sample k points from the data, sort them 
     mat[n, ] <- i # store sorted index in the matrix by row
-    cb <- combn(k, 2) # all combinations of k chooses 2 by column
+    cb <- utils::combn(k, 2) # all combinations of k chooses 2 by column
     NC <- ncol(cb) # NC number of combinations
     distances <- numeric(NC) # a vector of distances of NC long
     for(c in 1:NC) distances[c] <- space_distmat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
@@ -402,8 +399,8 @@ compare_blobs <- function(b1, b2){
   # compare blobs and retain the commonality
   # b1 and b2: two outputs of find_blobs() using the same dataset
   
-  k1 <- length(unique(na.omit(b1$clust))) # account for non-assigned points, i.e. clust == NA
-  k2 <- length(unique(na.omit(b2$clust)))
+  k1 <- length(unique(stats::na.omit(b1$clust))) # account for non-assigned points, i.e. clust == NA
+  k2 <- length(unique(stats::na.omit(b2$clust)))
   k <- max(k1,k2)
   
   # all the possible pairs of cluster assignment
@@ -464,13 +461,11 @@ compare_blobs <- function(b1, b2){
 #' @inheritParams find_blobs
 #' @param iter an integer of the number of iterations. Default is 3L.
 #' @param converge_ari a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
-#' @param random_start a logical operator. Should random start or [start_blobs()] be used? Default is F.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] for geometry. Default is 4326.
 #' @param ... the optional arguments include `random_start`.
 #' \itemize{
 #'   \item \code{random_start}: a logical operator. Should random start or [start_blobs()] be used? Default is F.
 #' }
-#'
 #' 
 #' @details
 #' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
@@ -713,7 +708,7 @@ find_dup <- function (clust, ari = 1) {
   # number of solutions
   n_sol <- nrow(clust)
   # get all combination of pairs
-  pairs <- combn(n_sol, 2)
+  pairs <- utils::combn(n_sol, 2)
   # calculate the pairwise ARI for all pairs of solutions
   pairwise_ari <- future.apply::future_vapply(1:ncol(pairs),
                                               function(x) mclust::adjustedRandIndex(clust[pairs[1,x], ], clust[pairs[2,x], ]),
