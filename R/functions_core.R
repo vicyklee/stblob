@@ -456,7 +456,7 @@ compare_blobs <- function(b1, b2){
 #' Core local-search algorithm
 #' 
 #' @description
-#' This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in a iterative fashion.
+#' This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in an iterative fashion.
 #' 
 #' @inheritParams find_blobs
 #' @param iter an integer of the number of iterations. Default is 3L.
@@ -630,7 +630,7 @@ blob_search_filter <- function(blob, space_distmat, sigma, crs,
 #' Core local-search algorithm
 #' 
 #' @description
-#' This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in a iterative fashion and
+#' This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in an iterative fashion and
 #' returns a feasible solution under the constraints.
 #' 
 #' @inheritParams find_blobs
