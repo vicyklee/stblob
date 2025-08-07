@@ -216,7 +216,8 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
   if (orientation == "portrait") {
     p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
       ggridges::geom_density_ridges(alpha = 0.2, scale = 0.6, show.legend = F) +
-      ggplot2::geom_point(shape = "\u2014", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
+      # ggplot2::geom_point(shape = "\u2014", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
+      ggplot2::geom_point(alpha = 0.5, show.legend = F) +
       ggplot2::theme(axis.text.x = ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), axis.title.x = ggplot2::element_blank()) +
       ggplot2::coord_flip() +
       ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
@@ -227,7 +228,8 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
   if (orientation == "landscape") {
     p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
       ggridges::geom_density_ridges(alpha = 0.2, scale = 0.6, show.legend = F) +
-      ggplot2::geom_point(shape = "|", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
+      # ggplot2::geom_point(shape = "|", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
+      ggplot2::geom_point(alpha = 0.5, show.legend = F) +
       ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank()) +
       ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
       ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
