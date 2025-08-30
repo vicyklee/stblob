@@ -408,7 +408,7 @@ find_blobs <- function(data, k, r, ...) {
   
   # Reorder k_matrix to match the reordered data
   order <- data[ ,"order"]
-  k_matrix[order, order]
+  k_matrix <- k_matrix[order, order]
 
   # Extract clust to make the code cleaner
   clust <- data[,"clust"]
@@ -431,7 +431,7 @@ find_blobs <- function(data, k, r, ...) {
       k_ii <- k_matrix[i, i] # included so the beta makes more sense
       k_ik <- k_matrix[i, clust_points]
       k_kk <- k_matrix[clust_points, clust_points, drop = FALSE] # O(c^2)
-      space_stat[j] <- k_ii - 2*mean(k_ik) + mean(k_kk) 
+      space_stat[j] <- k_ii - sum(k_ik)*2/n[j] + sum(k_kk)/n[j]^2
 
       # compute the temporal cost
       clust_points_tmp <- if (i %in% clust_points) clust_points[clust_points != i] else clust_points
