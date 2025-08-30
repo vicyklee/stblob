@@ -352,9 +352,11 @@ start_blobs <- function(data, k, ...) {
     similarities <- numeric(NC) # a vector of distances of NC long
     for(c in 1:NC) similarities[c] <- k_matrix[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
     max_similarity[n] <- max(similarities) # find the maximum hence minimum separation
+    print(max_similarity)
   }
   # pick the set with largest minimum distance between two points to ensure maximum separation between k points;
   # pick the first one if two are tied 
+  print(max_similarity)
   start <- mat[which(max_similarity == min(max_similarity))[1], ]
   # Assign cluster memberships to the starting points
   data[start, "clust"] <- 1:k
