@@ -30,35 +30,117 @@ compute_distmat <- function(data, method = "geodesic") {
 #' Radial basis function
 #' 
 #' @description
-#' This function kernelises the distance using the radial basis function. It is also known as the Gaussian kernel.
+#' This function converts a distance matrix to a weighted adjacency matrix using the radial basis function (i.e. Gaussian function).
 #'
-#' @param distance a numeric or complex vector of distances.
+#' @param D a distance matrix.
 #' @param sigma a numeric value of sigma.
 #'
-#' @return a numeric or complex vector of distances \eqn{[0,1} in the feature space.
-#'
+#' @return a weighted adjacency matrix \eqn{[0,1]}.
 #' @export
 
-rbf <- function(distance, sigma) {
-  exp(-(distance^2)/(2*sigma^2)) 
+rbf <- function(D, sigma) {
+  W <- exp(- (D^2) / (2 * sigma^2))
+  diag(W) <- 0   # no self-loops
+  return(W)
 }
+
+#------------------------------------------------------------------------------#
+#' Compute unnormalised graph Laplacian
+#' 
+#' @description
+#' This function compute unnormalised graph Laplacian.
+#'
+#' @param A an adjaceny matrix
+#'
+#' @return an unnormalised graph Laplacian.
+#' @export
+
+compute_laplacian <- function(A) {
+  d <- rowSums(A)
+  L <- diag(d) - A
+  return(L)
+}
+
+#------------------------------------------------------------------------------#
+#' Compute diffusion kernel
+#' 
+#' @description
+#' This function compute a diffusion kernel using eigendecomposition.
+#'
+#' @param L a graph Laplacian
+#' @param beta a numeric parameter controlling the diffusion rate. 
+#'
+#' @return a diffusion kernel matrix
+#' @export
+
+k_diffusion <- function(L, beta) {
+  eig <- eigen(L, symmetric = TRUE)
+  U <- eig$vectors
+  lambda <- eig$values
+  
+  exp_lambda <- exp(-beta * lambda)
+  K <- U %*% diag(exp_lambda) %*% t(U)
+  return(K)
+}
+
+#------------------------------------------------------------------------------#
+#' Convert distance matrix to kernel matrix using diffusion kernel
+#' 
+#' @description
+#' This function converts a distance matrix to a kernel matrix using a diffusion kernel.
+#' 
+#' @inheritParams rbf
+#' @inheritParams k_diffusion
+#' 
+#' @details
+#' A weighted adjacency matrix \eqn{W} is obtained from the distance matrix using the radial basis function (i.e. Gaussian function).
+#' Here, we fix the hyperparameter \eqn{\sigma} as the median of the distance distribution. 
+#' Then, an unnormalised graph Laplacian \eqn{L} is constructed by \eqn{L = D - W} where \eqn{D} is the degree matrix obtained from \eqn{W}.
+#' A diffusion kernel is used to compute the kernel matrix by \eqn{K = e^{-\beta L}} via eigendecomposition.
+#'
+#' @return a diffusion kernel matrix
+#' 
+#' @export
+
+distmat_to_kmat <- function(D, beta) {
+  # distance to weighted adjaceny matrix
+  W <- rbf(D, sigma = stats::median(D))
+  # compute unnormalised graph Laplacian
+  L <- compute_laplacian(W)
+  # compute kernel matrix using diffusion kernel
+  K <- k_diffusion(L, beta)
+  return(K)
+}
+
 #------------------------------------------------------------------------------#
 #' Spatial cost computation
 #'
 #' @description
 #' This function computes and returns the statistic of the spatial cost function for a given cluster.
 #'
-#' @param space_distmat a numeric spatial distance matrix.
 #' @param clust_points a numeric vector of point indices in the targeted cluster.
-#' @param sigma a numeric value of sigma passed on to [rbf()].
+#' @param ... the additional arguments include `k_matrix`, `beta` and `space_distmat`.
+#' \itemize{
+#'   \item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+#'   \item \code{beta}: a numeric parameter controlling the diffusion rate passed on to [k_diffusion()].
+#'   \item \code{space_distmat}: a numeric spatial distance matrix.
+#' }
 #'
 #' @return a numeric vector of spatial statistics for a given cluster.
 
-compute_spacestat <- function(space_distmat, clust_points, sigma) {
-  # transform the spatial distance matrix into a kernel matrix
-  k_matrix <- rbf(space_distmat, sigma)
+compute_spacestat <- function(clust_points, ...) {
+  args <- list(...)
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
   
-  # calculate the distance to the centroid in the feature space
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
+  
+  # compute the distance to the centroid in the feature space
   k_ii <- diag(k_matrix)
   k_ik <- k_matrix[ , clust_points, drop = FALSE]
   k_kk <- k_matrix[clust_points, clust_points, drop = FALSE]
@@ -151,10 +233,9 @@ reorder_clust <- function(clust) {
 #' This function evaluates clustering performance and returns a summary and clusters that are below the critical size.
 #'
 #' @param data a data frame.
-#' @param space_distmat a numeric spatial distance matrix. Default is NULL.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
-#' @param sigma a numeric value of sigma passed on to [rbf()]. It must be specified when `space_distmat` is supplied.
-#'
+#' @inheritParams compute_spacestat
+#' 
 #' @details
 #' The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data points and \eqn{k} is the number of clusters.
 #'
@@ -166,7 +247,7 @@ reorder_clust <- function(clust) {
 #'
 #' @export
 
-eval_blobs <- function(data, space_distmat, sigma, crs = 4326) {
+eval_blobs <- function(data, crs = 4326, ...) {
   # total number of points
   N <- nrow(data)
   # total number of clusters
@@ -182,7 +263,7 @@ eval_blobs <- function(data, space_distmat, sigma, crs = 4326) {
 
     # spatial objective
     # kernel k means cost function
-    space_ss[j] <- sum(compute_spacestat(space_distmat = space_distmat, clust_points = clust_points, sigma = sigma)[clust_points])
+    space_ss[j] <- sum(compute_spacestat(clust_points = clust_points, ...)[clust_points])
     # temporal objectives
     time_range[j] <- max(data_k[ ,3], na.rm = T) - min(data_k[ ,3], na.rm = T)
     time_evenness[j] <- 1 / (1 + stats::var(diff(sort(data_k[ ,3])))) # NA if there are fewer than 3 data points
@@ -232,12 +313,23 @@ eval_blobs <- function(data, space_distmat, sigma, crs = 4326) {
 #'
 #' @param data a data matrix or data frame.
 #' @param k an integer of the number of clusters.
-#' @param space_distmat a numeric spatial distance matrix.
+#' @inheritParams compute_spacestat
 #'
 #' @return a data frame with assigned starting clusters as a column.
 #' @export
 
-start_blobs <- function(data, k, space_distmat) {
+start_blobs <- function(data, k, ...) {
+  args <- list(...)
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
+  
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
+  
   data <- as.data.frame(data)
   # assign an index to put data back into correct order at the end
   data$order <- 1:nrow(data)
@@ -257,13 +349,13 @@ start_blobs <- function(data, k, space_distmat) {
     mat[n, ] <- i # store sorted index in the matrix by row
     cb <- utils::combn(k, 2) # all combinations of k chooses 2 by column
     NC <- ncol(cb) # NC number of combinations
-    distances <- numeric(NC) # a vector of distances of NC long
-    for(c in 1:NC) distances[c] <- space_distmat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
-    mindist[n] <- min(distances) # find the minimum
+    similarities <- numeric(NC) # a vector of distances of NC long
+    for(c in 1:NC) similarities[c] <- k_matrix[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
+    max_similarity[n] <- min(similarities) # find the maximum hence minimum separation
   }
-  # Pick the set with largest minimum distance between two points to ensure maximum separation between k points;
+  # pick the set with largest minimum distance between two points to ensure maximum separation between k points;
   # pick the first one if two are tied 
-  start <- mat[which(mindist == max(mindist))[1], ]
+  start <- mat[which(max_similarity == min(max_similarity))[1], ]
   # Assign cluster memberships to the starting points
   data[start, "clust"] <- 1:k
   data <- as.data.frame(data)
@@ -280,16 +372,26 @@ start_blobs <- function(data, k, space_distmat) {
 #' @param data a data matrix or data frame.
 #' @param k an integer of the number of clusters.
 #' @param r an numeric value of spatial relative weight. It must be \eqn{[0,1]}.
-#' @param space_distmat a numeric spatial distance matrix.
-#' @param sigma a numeric value of sigma passed on to [rbf()].
+#' @inheritParams compute_spacestat
 
 #' @details
-#' Gaussian kernel is applied to compute cluster centroids in space.
+#' Diffusion kernel is applied to compute distance to centroid in space.
 
 #' @return a data frame with assigned clusters as a column.
 #' @export
 
-find_blobs <- function(data, k, r, space_distmat, sigma) {
+find_blobs <- function(data, k, r, ...) {
+  args <- list(...)
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
+  
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
+  
   # a bit faster to handle data as a matrix
   data <- as.matrix(data)
 
@@ -304,13 +406,9 @@ find_blobs <- function(data, k, r, space_distmat, sigma) {
   # assigned at the top, randomised unassigned rows that follow
   data <- data[c(a_points,tba_points), ] 
   
-  # Reorder space_distmat/k.matrix to match the reordered data
+  # Reorder k_matrix to match the reordered data
   order <- data[ ,"order"]
-  space_distmat <- space_distmat[order, order] 
-  
-  # transform the spatial distance matrix into a kernel matrix
-  if (is.null(sigma)) stop("sigma is missing") # error message for missing sigma
-  k_matrix <- rbf(space_distmat, sigma) 
+  k_matrix[order, order]
 
   # Extract clust to make the code cleaner
   clust <- data[,"clust"]
@@ -330,7 +428,7 @@ find_blobs <- function(data, k, r, space_distmat, sigma) {
       # compute the spatial cost == j
       # calculate the distance to the centroid in Hilbert space
       # O(c^2) is unavoidable 
-      k_ii <- k_matrix[i, i] # included so the sigma makes more sense
+      k_ii <- k_matrix[i, i] # included so the beta makes more sense
       k_ik <- k_matrix[i, clust_points]
       k_kk <- k_matrix[clust_points, clust_points, drop = FALSE] # O(c^2)
       space_stat[j] <- k_ii - 2*mean(k_ik) + mean(k_kk) 
@@ -462,13 +560,16 @@ compare_blobs <- function(b1, b2){
 #' @param iter an integer of the number of iterations. Default is 3L.
 #' @param converge_ari a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] for geometry. Default is 4326.
-#' @param ... the optional arguments include `random_start`.
+#' @param ... the additional arguments include `random_start`, `k_matrix`, `beta` and `space_distmat`.
 #' \itemize{
 #'   \item \code{random_start}: a logical operator. Should random start or [start_blobs()] be used? Default is F.
+#'   \item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+#'   \item \code{beta}: a numeric parameter controlling the diffusion rate passed on to [k_diffusion()].
+#'   \item \code{space_distmat}: a numeric spatial distance matrix.
 #' }
 #' 
 #' @details
-#' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+#' Diffusion kernel is applied to compute distance to centroid in space.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
@@ -485,11 +586,20 @@ compare_blobs <- function(b1, b2){
 #'
 #' @seealso [sf::st_as_sf()]
 
-blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
+blob_search_iter <- function(data, k, r, iter = 3L,
                              converge_ari = NULL, crs = 4326, ...) {
   
   args <- list(...)
   random_start <- args$random_start
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
+  
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
   
   if (is.null(random_start)) random_start <- F
   if (random_start == T) {
@@ -499,8 +609,10 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
     data$clust[start] <- 1:k
   } else {
     # start_blobs() to pick centroids
-    data <- start_blobs(data = data, k = k, space_distmat = space_distmat)
+    data <- start_blobs(data = data, k = k, k_matrix = k_matrix)
   }
+  
+  
   # initialise counter counting find_blobs()
   t <- 0
   
@@ -511,7 +623,7 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
     
     data_old <- data
     # find_blobs()
-    data <- find_blobs(data = data, k = k, r = r, space_distmat = space_distmat, sigma = sigma)
+    data <- find_blobs(data = data, k = k, r = r, k_matrix = k_matrix)
     # count find_blobs() executed
     t <- t + 1
     
@@ -522,7 +634,7 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
       n_common <- sum(!is.na(data_common$clust))
       
       # eval_blobs()
-      eval_out <- eval_blobs(data = data, space_distmat = space_distmat, sigma = sigma, crs = crs)
+      eval_out <- eval_blobs(data = data, crs = crs, k_matrix = k_matrix)
       clust_below_size <- eval_out$clust_below_size
       trace_df_newrow <- eval_out$summary
       trace_df_newrow$iter <- t
@@ -548,13 +660,14 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
 
 
 #------------------------------------------------------------------------------#
-#' Filter constraints from a local search
+#' Filter constraints from a local search 
 #'
 #' This function filters data points or the entire solution when constraints are violated.
 #'
 #' @inheritParams find_blobs
 #' @inheritParams blob_search_iter
-#' @param blob a list of objects returned from [blob_search()]
+#' @param blob a list of objects returned from [blob_search()].
+#' @param k_matrix a kernel matrix computed from the spatial distance matrix.
 #' @param filter_intersects a logical operator. Should an assignment with intersects in space be removed? Default is T.
 #' @param filter_clustsize a logical operator. Should a cluster below the critical size be assigned NA? Default is T.
 #' @param max_na a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.
@@ -572,8 +685,7 @@ blob_search_iter <- function(data, k, r, iter = 3L, space_distmat, sigma,
 #'
 #' @seealso [sf::st_as_sf()]
 
-blob_search_filter <- function(blob, space_distmat, sigma, crs,
-                               filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
+blob_search_filter <- function(blob, k_matrix, crs, filter_intersects = T, filter_clustsize = T, max_na = 0.05) {
 
   N <- nrow(blob$data)
 
@@ -600,7 +712,7 @@ blob_search_filter <- function(blob, space_distmat, sigma, crs,
       # make sure there is no gap in the sequence of k
       blob$data$clust <- reorder_clust(blob$data$clust)
       # update eval_out$summary
-      eval_out_updated <- eval_blobs(data = blob$data, space_distmat = space_distmat, sigma = sigma, crs = crs)
+      eval_out_updated <- eval_blobs(data = blob$data, crs = crs , k_matrix = k_matrix)
       updated_cols <- intersect(names(blob$summary), names(eval_out_updated$summary))
       blob$summary[ , updated_cols] <- eval_out_updated$summary[ , updated_cols]
       blob$summary$n_removed <- n_removed
@@ -627,7 +739,7 @@ blob_search_filter <- function(blob, space_distmat, sigma, crs,
 }
 
 #------------------------------------------------------------------------------#
-#' Core local-search algorithm
+#' Core local-search algorithm ###### RETURN HERE ###########
 #' 
 #' @description
 #' This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in an iterative fashion and
@@ -638,7 +750,7 @@ blob_search_filter <- function(blob, space_distmat, sigma, crs,
 #' @inheritParams blob_search_filter
 #'
 #' @details
-#' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+#' Diffusion kernel is applied to compute distance to centroid in space.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
@@ -662,17 +774,27 @@ blob_search_filter <- function(blob, space_distmat, sigma, crs,
 #'
 #' @export
 
-blob_search <- function(data, k, r, iter = 3L, space_distmat, sigma,
+blob_search <- function(data, k, r, iter = 3L,
 					              converge_ari = NULL, crs = 4326,
                         filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
   
+  args <- list(...)
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
+  
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
+
   # core iterative search
   blob <- blob_search_iter(data = data, k = k, r = r, iter = iter,
-                           space_distmat = space_distmat, sigma = sigma,
-                           converge_ari = converge_ari, crs = crs, ...)
+                           converge_ari = converge_ari, crs = crs, k_matrix = k_matrix, ...)
   
   # filter constraints
-  blob <- blob_search_filter(blob, space_distmat = space_distmat, sigma = sigma, crs = crs,
+  blob <- blob_search_filter(blob, k_matrix = k_matrix, crs = crs,
                              filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na)
   
   return(blob)
@@ -834,7 +956,7 @@ convert_to_pop <- function(blob_list) {
 #' @param run an integer of the number of runs. Default is 10L.
 #'
 #' @details
-#' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+#' Diffusion kernel is applied to compute distance to centroid in space.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
@@ -859,9 +981,20 @@ convert_to_pop <- function(blob_list) {
 #'
 #' @export
 
-blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, space_distmat, sigma,
+blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L,
                            converge_ari = NULL, crs = 4326,
                            filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
+  
+  args <- list(...)
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
+  
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
   
   if (length(r_range) > 1) {
     # LHS sampling for more evenly distributed parameters
@@ -873,9 +1006,10 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, sp
   }
   
   blob_list <- future.apply::future_lapply(r_samples, function (r) {
-    blob_search(data = data, k = k, r = r, iter = iter, space_distmat = space_distmat, sigma = sigma,
+    blob_search(data = data, k = k, r = r, iter = iter,
                 converge_ari = converge_ari, crs = crs,
-                filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
+                filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na,
+                k_matrix, ...)
   }, future.seed = T)
  
   pop <- convert_to_pop(blob_list)
@@ -896,7 +1030,7 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, sp
 #' @param k_range an integer vector of length 2 indicating the lower and upper bounds of the number of clusters. Default is NULL.
 #'
 #' @details
-#' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+#' Diffusion kernel is applied to compute distance to centroid in space.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
@@ -916,9 +1050,19 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L, sp
 #' @export
 
 blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, run = 10L, 
-                           space_distmat, sigma,
                            converge_ari = NULL, crs = 4326,
                            filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
+  
+  args <- list(...)
+  k_matrix <- args$k_matrix
+  beta <- args$beta
+  space_distmat <- args$space_distmat
+  
+  if (is.null(k_matrix)) {
+    if (is.null(space_distmat)) stop("k_matrix or space_distmat is missing!")
+    if (is.null(beta)) stop("beta is missing!")
+    k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
+  }
   
   # number of samples
   N <- nrow(data)
@@ -962,9 +1106,10 @@ blob_kpopulate <- function(data, k_range = NULL, r_range = c(0.5,1), iter = 3L, 
   grid <- expand.grid(a = a, b = b)
   blob_list <- future.apply::future_Map(function(k, r) {
     list(
-      blob = blob_search(data = data, k = k, r = r, iter = iter, space_distmat = space_distmat, sigma = sigma,
+      blob = blob_search(data = data, k = k, r = r, iter = iter,
                   converge_ari = converge_ari, crs = crs,
-                  filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...),
+                  filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na,
+                  k_matrix = k_matrix, ...),
       k = k
     )
   }, grid$a, grid$b, future.seed = TRUE)
@@ -1285,6 +1430,8 @@ filter_pareto_similar <- function(pop, ari) {
 #' @param max_run an integer of the number of maximum runs for all batches. Default is 500L
 #' @param run an integer of the number of runs for a single batch. Default is 100L.
 #' @param pareto_similar_ari a numeric value of Adjusted Rand Index (ARI) that sets similarity threshold between two Pareto optimal solutions. It must be \eqn{[0,1]}. Default is NULL.
+#' @param space_distmat a numeric spatial distance matrix.
+#' @param beta a numeric parameter controlling the diffusion rate passed on to [k_diffusion()].
 #' @param ... the optional arguments include `random_start`, `k` and `obj`.
 #' \itemize{
 #'   \item \code{random_start}: a logical operator. Should random start or [start_blobs()] be used? Default is F.
@@ -1293,7 +1440,7 @@ filter_pareto_similar <- function(pop, ari) {
 #' }
 #'
 #' @details
-#' Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+#' Diffusion kernel is applied to compute distance to centroid in space.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
@@ -1317,7 +1464,7 @@ filter_pareto_similar <- function(pop, ari) {
 #' @export
 
 blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_run = 500L, run = 100L,
-                      space_distmat, sigma = sigma,
+                      space_distmat, beta = beta,
                       converge_ari = NULL, crs = 4326,
                       filter_intersects = T, filter_clustsize = T, max_na = 0.05,
                       pareto_similar_ari = NULL, ...) {
@@ -1326,6 +1473,9 @@ blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_r
   k <- args$k
   obj <- args$obj
   
+  # compute diffusion kernel
+  k_matrix <- distmat_to_kmat(space_distmat, beta)
+
   #-------------------------------------------------------------------#
   # sort the batches and runs from the input ####
   if (max_run < run) stop("max_run < run")
@@ -1379,14 +1529,14 @@ blob_moo <- function (data, k_range = NULL, r_range = c(0.5,1), iter = 3L, max_r
     # if k is specified and k_range is not, run blob_populate()
     if (!is.null(k) & is.null(k_range)) {
       pop <- blob_populate(data = data, k = k, r_range = r_range, iter = iter, run = RUN[i],
-                           space_distmat = space_distmat, sigma = sigma,
                            converge_ari = converge_ari, crs = crs,
-                           filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
+                           filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na,
+                           k_matrix = k_matrix, ...)
     } else {
       pop <- blob_kpopulate(data = data, k_range = k_range, r_range = r_range, iter = iter, run = RUN[i],
-                            space_distmat = space_distmat, sigma = sigma,
                             converge_ari = converge_ari, crs = crs,
-                            filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na, ...)
+                            filter_intersects = filter_intersects, filter_clustsize = filter_clustsize, max_na = max_na,
+                            k_matrix = k_matrix, ...)
     }
     
     

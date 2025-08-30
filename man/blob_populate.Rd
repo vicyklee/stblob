@@ -10,8 +10,6 @@ blob_populate(
   r_range = c(0.5, 1),
   iter = 3L,
   run = 10L,
-  space_distmat,
-  sigma,
   converge_ari = NULL,
   crs = 4326,
   filter_intersects = T,
@@ -31,10 +29,6 @@ blob_populate(
 
 \item{run}{an integer of the number of runs. Default is 10L.}
 
-\item{space_distmat}{a numeric spatial distance matrix.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
-
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
@@ -45,9 +39,11 @@ blob_populate(
 
 \item{max_na}{a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.}
 
-\item{...}{the optional arguments include \code{random_start}.
+\item{...}{the additional arguments include \code{k_matrix}, \code{beta} and \code{space_distmat}.
 \itemize{
-\item \code{random_start}: a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.
+\item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+\item \code{beta}: a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.
+\item \code{space_distmat}: a numeric spatial distance matrix.
 }}
 }
 \value{
@@ -63,7 +59,7 @@ a list of the following objects.
 This function populates solutions by weighted sum scalarisation of the bi-objective function in \code{\link[=blob_search]{blob_search()}} for a given k.
 }
 \details{
-Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+Diffusion kernel is applied to compute distance to centroid in space.
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.
 

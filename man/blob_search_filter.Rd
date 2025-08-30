@@ -6,8 +6,7 @@
 \usage{
 blob_search_filter(
   blob,
-  space_distmat,
-  sigma,
+  k_matrix,
   crs,
   filter_intersects = T,
   filter_clustsize = T,
@@ -15,11 +14,9 @@ blob_search_filter(
 )
 }
 \arguments{
-\item{blob}{a list of objects returned from \code{\link[=blob_search]{blob_search()}}}
+\item{blob}{a list of objects returned from \code{\link[=blob_search]{blob_search()}}.}
 
-\item{space_distmat}{a numeric spatial distance matrix.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
+\item{k_matrix}{a kernel matrix computed from the spatial distance matrix.}
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
 

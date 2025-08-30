@@ -4,16 +4,19 @@
 \alias{eval_blobs}
 \title{Clustering evaluation}
 \usage{
-eval_blobs(data, space_distmat, sigma, crs = 4326)
+eval_blobs(data, crs = 4326, ...)
 }
 \arguments{
 \item{data}{a data frame.}
 
-\item{space_distmat}{a numeric spatial distance matrix. Default is NULL.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}. It must be specified when \code{space_distmat} is supplied.}
-
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
+
+\item{...}{the additional arguments include \code{k_matrix}, \code{beta} and \code{space_distmat}.
+\itemize{
+\item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+\item \code{beta}: a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.
+\item \code{space_distmat}: a numeric spatial distance matrix.
+}}
 }
 \value{
 a list of the following objects.

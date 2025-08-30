@@ -4,14 +4,19 @@
 \alias{start_blobs}
 \title{Assign the starting cluster members by approximating the maximum spatial separation}
 \usage{
-start_blobs(data, k, space_distmat)
+start_blobs(data, k, ...)
 }
 \arguments{
 \item{data}{a data matrix or data frame.}
 
 \item{k}{an integer of the number of clusters.}
 
-\item{space_distmat}{a numeric spatial distance matrix.}
+\item{...}{the additional arguments include \code{k_matrix}, \code{beta} and \code{space_distmat}.
+\itemize{
+\item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+\item \code{beta}: a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.
+\item \code{space_distmat}: a numeric spatial distance matrix.
+}}
 }
 \value{
 a data frame with assigned starting clusters as a column.

@@ -4,16 +4,16 @@
 \alias{rbf}
 \title{Radial basis function}
 \usage{
-rbf(distance, sigma)
+rbf(D, sigma)
 }
 \arguments{
-\item{distance}{a numeric or complex vector of distances.}
+\item{D}{a distance matrix.}
 
 \item{sigma}{a numeric value of sigma.}
 }
 \value{
-a numeric or complex vector of distances \eqn{[0,1} in the feature space.
+a weighted adjacency matrix \eqn{[0,1]}.
 }
 \description{
-This function kernelises the distance using the radial basis function. It is also known as the Gaussian kernel.
+This function converts a distance matrix to a weighted adjacency matrix using the radial basis function (i.e. Gaussian function).
 }

@@ -4,7 +4,7 @@
 \alias{find_blobs}
 \title{Assign clusters}
 \usage{
-find_blobs(data, k, r, space_distmat, sigma)
+find_blobs(data, k, r, ...)
 }
 \arguments{
 \item{data}{a data matrix or data frame.}
@@ -13,9 +13,12 @@ find_blobs(data, k, r, space_distmat, sigma)
 
 \item{r}{an numeric value of spatial relative weight. It must be \eqn{[0,1]}.}
 
-\item{space_distmat}{a numeric spatial distance matrix.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
+\item{...}{the additional arguments include \code{k_matrix}, \code{beta} and \code{space_distmat}.
+\itemize{
+\item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+\item \code{beta}: a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.
+\item \code{space_distmat}: a numeric spatial distance matrix.
+}}
 }
 \value{
 a data frame with assigned clusters as a column.
@@ -24,5 +27,5 @@ a data frame with assigned clusters as a column.
 This function assigns clusters for a given k and r.
 }
 \details{
-Gaussian kernel is applied to compute cluster centroids in space.
+Diffusion kernel is applied to compute distance to centroid in space.
 }

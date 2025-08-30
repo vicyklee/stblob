@@ -4,14 +4,17 @@
 \alias{compute_spacestat}
 \title{Spatial cost computation}
 \usage{
-compute_spacestat(space_distmat, clust_points, sigma)
+compute_spacestat(clust_points, ...)
 }
 \arguments{
-\item{space_distmat}{a numeric spatial distance matrix.}
-
 \item{clust_points}{a numeric vector of point indices in the targeted cluster.}
 
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
+\item{...}{the additional arguments include \code{k_matrix}, \code{beta} and \code{space_distmat}.
+\itemize{
+\item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+\item \code{beta}: a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.
+\item \code{space_distmat}: a numeric spatial distance matrix.
+}}
 }
 \value{
 a numeric vector of spatial statistics for a given cluster.

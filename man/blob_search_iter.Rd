@@ -4,17 +4,7 @@
 \alias{blob_search_iter}
 \title{Core local-search algorithm}
 \usage{
-blob_search_iter(
-  data,
-  k,
-  r,
-  iter = 3L,
-  space_distmat,
-  sigma,
-  converge_ari = NULL,
-  crs = 4326,
-  ...
-)
+blob_search_iter(data, k, r, iter = 3L, converge_ari = NULL, crs = 4326, ...)
 }
 \arguments{
 \item{data}{a data matrix or data frame.}
@@ -25,17 +15,16 @@ blob_search_iter(
 
 \item{iter}{an integer of the number of iterations. Default is 3L.}
 
-\item{space_distmat}{a numeric spatial distance matrix.}
-
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
-
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} for geometry. Default is 4326.}
 
-\item{...}{the optional arguments include \code{random_start}.
+\item{...}{the additional arguments include \code{random_start}, \code{k_matrix}, \code{beta} and \code{space_distmat}.
 \itemize{
 \item \code{random_start}: a logical operator. Should random start or \code{\link[=start_blobs]{start_blobs()}} be used? Default is F.
+\item \code{k_matrix}: a kernel matrix computed from the spatial distance matrix.
+\item \code{beta}: a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.
+\item \code{space_distmat}: a numeric spatial distance matrix.
 }}
 }
 \value{
@@ -48,10 +37,10 @@ a list of the following objects.
 }
 }
 \description{
-This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in a iterative fashion.
+This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in an iterative fashion.
 }
 \details{
-Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+Diffusion kernel is applied to compute distance to centroid in space.
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.
 

@@ -12,7 +12,7 @@ blob_moo(
   max_run = 500L,
   run = 100L,
   space_distmat,
-  sigma = sigma,
+  beta = beta,
   converge_ari = NULL,
   crs = 4326,
   filter_intersects = T,
@@ -37,7 +37,7 @@ blob_moo(
 
 \item{space_distmat}{a numeric spatial distance matrix.}
 
-\item{sigma}{a numeric value of sigma passed on to \code{\link[=rbf]{rbf()}}.}
+\item{beta}{a numeric parameter controlling the diffusion rate passed on to \code{\link[=k_diffusion]{k_diffusion()}}.}
 
 \item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
 
@@ -75,7 +75,7 @@ This function populates solutions by weighted sum scalarisation of the bi-object
 optimises multiple objectives under constraints and returns a set of Pareto optimal solutions together with MOO quality indicators.
 }
 \details{
-Gaussian kernel is applied to compute cluster centroids and non-spherical clusters in space.
+Diffusion kernel is applied to compute distance to centroid in space.
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.
 
