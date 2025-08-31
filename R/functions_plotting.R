@@ -58,24 +58,20 @@ plot_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"), 
       p <- p + ggplot2::scale_colour_gradientn(colours = palette) 
     }
     if (colour == "batch" | colour == "k_o" | colour == "pareto") {
-      p <- p + ggplot2::scale_colour_manual(values = palette,
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = palette)
     }
   } else {
     if (colour == "r") {
       p <- p + ggplot2::scale_colour_gradientn(colours = MetBrewer::met.brewer("Hokusai3"))
     }
     if (colour == "batch") {
-      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Egypt", n = length(unique(objspace$batch))),
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Egypt", n = length(unique(objspace$batch))))
     }
     if (colour == "k_o") {
-      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Archambault", n = length(unique(objspace$k_o))),
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Archambault", n = length(unique(objspace$k_o))))
     }
     if (colour == "pareto") {
-      p <- p + ggplot2::scale_colour_manual(values = c("grey","#95c36e"),
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = c("grey","#95c36e"))
     }
   }
   
