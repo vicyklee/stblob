@@ -7,10 +7,9 @@
 plot_space(
   data,
   clust = NA,
-  space = "earth",
+  space,
   hull = F,
-  crs = 3035,
-  buffer = 5e+05,
+  crs = NULL,
   lab = NULL,
   palette = NULL
 )
@@ -20,13 +19,11 @@ plot_space(
 
 \item{clust}{a numeric vector of cluster assignemnt. Default is NA.}
 
-\item{space}{a string of the space data plotted in. It must be either "earth" or "euclidean". Default is "earth".}
+\item{space}{a string of the space data plotted in. It must be either "earth" or "euclidean".}
 
 \item{hull}{a logical operator. Should convex hulls be drawn? Default is F.}
 
-\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and \code{\link[sf:st_transform]{sf::st_transform()}}. Default is 3035.}
-
-\item{buffer}{a numeric value of the buffer between the data points and edges of the plot. Default is 500000 for \code{crs = 3035}.}
+\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and \code{\link[sf:st_transform]{sf::st_transform()}}. Default is NULL}
 
 \item{lab}{a string vector of length 2. The first one is passed on to \code{\link[ggplot2:labs]{ggplot2::xlab()}} and the second \code{\link[ggplot2:labs]{ggplot2::ylab()}}. Default is NULL.}
 

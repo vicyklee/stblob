@@ -18,10 +18,10 @@ savePDF <- function(p, file, width, height, ...) {
   invisible(grDevices::dev.off())
 }
 
-#' Plot 2D objective space
+#' Plot objective space
 #' 
 #' @description
-#' This function plots 2D objective space.
+#' This function plots the objective space.
 #' @param pop a list of objects returned from [blob_moo()].
 #' @param obj a string vector of length 2 that indicate the objectives.
 #' @param colour a string of the attribute to be coloured. It must be "pareto", "r", "batch" or "k_o".
@@ -32,7 +32,7 @@ savePDF <- function(p, file, width, height, ...) {
 #' @seealso [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
 #' @export
 
-plot_2d_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"), normalise = T, palette = NULL, alpha = 0.8) {
+plot_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"), normalise = T, palette = NULL, alpha = 0.8) {
   colour <- match.arg(colour)
 
   objspace <- pop$summary %>%
@@ -91,44 +91,28 @@ plot_2d_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"
 #' This function plots data in space.
 #' @param data a data frame
 #' @param clust a numeric vector of cluster assignemnt. Default is NA.
-#' @param space a string of the space data plotted in. It must be either "earth" or "euclidean". Default is "earth".
+#' @param space a string of the space data plotted in. It must be either "earth" or "euclidean".
 #' @param hull a logical operator. Should convex hulls be drawn? Default is F.
-#' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] and [sf::st_transform()]. Default is 3035.
-#' @param buffer a numeric value of the buffer between the data points and edges of the plot. Default is 500000 for `crs = 3035`.
+#' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] and [sf::st_transform()]. Default is NULL
 #' @param lab a string vector of length 2. The first one is passed on to [ggplot2::xlab()] and the second [ggplot2::ylab()]. Default is NULL.
 #' @param palette See `value` of [ggplot2::scale_colour_manual()]. Default is NULL. This uses the palette presets from [MetBrewer::met.brewer()].
 #' @return a ggplot.
 #' @seealso [sf::st_as_sf()], [sf::st_transform()], [ggplot2::labs()], [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
 #' @export
 
-plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035, buffer = 500000, lab = NULL, palette = NULL) {
+plot_space <- function (data, clust = NA, space, hull = F, crs = NULL, lab = NULL, palette = NULL) {
   space <- match.arg(space, choices = c("earth", "euclidean"))
+  if (space == "earth" & is.null(crs)) crs <- 4036
+  if (space == "euclidean" & is.null(crs)) crs <- NA
   
   clust_levels <- levels(as.factor(clust))
   if (is.null(palette)) {
     clust_cols <- MetBrewer::met.brewer("Hokusai3", n = length(clust_levels)) 
   }
   
-  if (space == "euclidean") {
-    if (is.null(lab)) lab <- c("x", "y")
-    
-    data$clust <- as.factor(clust)
-    p <- ggplot2::ggplot(data, ggplot2::aes(x = data[,1], y = data[,2], colour = clust, fill = clust)) +
-      ggplot2::geom_point(alpha = 0.5, show.legend = F) +
-      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_x_continuous(breaks = scales::pretty_breaks()) +
-      ggplot2::scale_y_continuous(breaks = scales::pretty_breaks()) +
-      ggplot2::coord_fixed() +
-      ggplot2::xlab(lab[1]) +
-      ggplot2::ylab(lab[2])
-  }
-  
-  if (space == "earth" & hull == F) {
-    if (is.null(lab)) lab <- c("Longitude", "Latitude")
-    
-    data$clust <- as.factor(clust)
-    pts <- sf::st_as_sf(data, coords = c(1,2), crs = 4326)
+  data$clust <- as.factor(clust)
+  pts <- sf::st_as_sf(data, coords = c(1,2), crs = crs)
+  if (!is.na(crs)) {
     pts <- sf::st_transform(pts, crs = crs)
     # Get bounding box of your data
     bb <- sf::st_bbox(pts)
@@ -141,49 +125,56 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
     }
     xlim <- c(bb["xmin"] - buffer, bb["xmax"] + buffer)
     ylim <- c(bb["ymin"] - buffer, bb["ymax"] + buffer)
-    
-    world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
-    world <- sf::st_transform(world, crs = crs)
-    p <- ggplot2::ggplot() +
-      ggplot2::geom_sf(data = world, alpha = 0.2) +
-      ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-      ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) +
-      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::xlab(lab[1]) +
-      ggplot2::ylab(lab[2])
   }
   
-  if (space == "earth" & hull == T) {
-    if (is.null(lab)) lab <- c("Longitude", "Latitude")
-    
-    data$clust <- as.factor(clust)
-    pts <- sf::st_as_sf(data, coords = c(1,2), crs = 4326)
-    pts <- sf::st_transform(pts, crs = crs)
-    # Get bounding box of your data
-    bb <- sf::st_bbox(pts)
-    # Add a buffer
-    xlim <- c(bb["xmin"] - buffer, bb["xmax"] + buffer)
-    ylim <- c(bb["ymin"] - buffer, bb["ymax"] + buffer)
-    
-    # Hull
+  if (hull == F) {
+    if (space == "euclidean") {
+      if (is.null(lab)) lab <- c("x", "y")
+      p <- ggplot2::ggplot() +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
+        ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+        ggplot2::xlab(lab[1]) +
+        ggplot2::ylab(lab[2])
+    } else if (space == "earth") {
+      world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+      world <- sf::st_transform(world, crs = crs)
+      p <- ggplot2::ggplot() +
+        ggplot2::geom_sf(data = world, alpha = 0.2) +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
+        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) +
+        ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+        ggplot2::xlab(lab[1]) +
+        ggplot2::ylab(lab[2])
+    }
+  } else if (hull == T) {
     hulls <- pts %>%
       dplyr::filter(!is.na(clust)) %>%
       dplyr::group_by(clust) %>%
       dplyr::summarise(geometry = sf::st_combine(geometry)) %>%
       sf::st_convex_hull()
-    
-    world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
-    world <- sf::st_transform(world, crs = crs)
-    p <- ggplot2::ggplot() +
-      ggplot2::geom_sf(data = world, alpha = 0.2) +
-      ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
-      ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-      ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = 3035) +
-      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::xlab(lab[1]) +
-      ggplot2::ylab(lab[2])
+    if (space == "euclidean") {
+      if (is.null(lab)) lab <- c("x", "y")
+      p <- ggplot2::ggplot() +
+        ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
+        ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+        ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
+        ggplot2::xlab(lab[1]) +
+        ggplot2::ylab(lab[2])
+    } else if (space == "earth") {
+      world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+      world <- sf::st_transform(world, crs = crs)
+      p <- ggplot2::ggplot() +
+        ggplot2::geom_sf(data = world, alpha = 0.2) +
+        ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
+        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = 3035) +
+        ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+        ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
+        ggplot2::xlab(lab[1]) +
+        ggplot2::ylab(lab[2])
+      
+    }
   }
   return(p)
 }
@@ -194,16 +185,13 @@ plot_space <- function (data, clust = NA, space = "earth", hull = F, crs = 3035,
 #' This function plots data in time
 #' @param data a data frame
 #' @param clust a numeric vector of cluster assignemnt.
-#' @param orientation a string of orientation of the plot. It must be either "portrait" or "landscape".
 #' @param lab a string of label passed on to [ggplot2::xlab()]. Default is NULL.
 #' @param palette See `value` of [ggplot2::scale_colour_manual()]. Default is NULL. This uses the palette presets from [MetBrewer::met.brewer()].
 #' @return a ggplot.
 #' @seealso [ggplot2::labs()], [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
 #' @export
 
-plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palette = NULL) {
-  orientation <- match.arg(orientation, choices = c("landscape", "portrait"))
-
+plot_time <- function (data, clust, lab = NULL, palette = NULL) {
   clust_levels <- levels(as.factor(clust))
   if (is.null(palette)) {
     clust_cols <- MetBrewer::met.brewer("Hokusai3", n = length(clust_levels)) 
@@ -213,28 +201,15 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
   
   if (is.null(lab)) lab <- "time"
   
-  if (orientation == "portrait") {
-    p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
-      ggridges::geom_density_ridges(alpha = 0.2, scale = 0.6, show.legend = F) +
-      # ggplot2::geom_point(shape = "\u2014", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
-      ggplot2::geom_point(alpha = 0.5, show.legend = F) +
-      ggplot2::theme(axis.text.x = ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), axis.title.x = ggplot2::element_blank()) +
-      ggplot2::coord_flip() +
-      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::xlab(lab)
-  }
-  
-  if (orientation == "landscape") {
-    p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
-      ggridges::geom_density_ridges(alpha = 0.2, scale = 0.6, show.legend = F) +
-      # ggplot2::geom_point(shape = "|", size = 3, stroke = 1, alpha = 0.5, show.legend = F) +
-      ggplot2::geom_point(alpha = 0.5, show.legend = F) +
-      ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank()) +
-      ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
-      ggplot2::xlab(lab)
-  }
+  p <- ggplot2::ggplot(data, ggplot2::aes(y = clust, x = data[,3], colour = clust, fill = clust)) +
+    ggridges::geom_density_ridges(alpha = 0.2, scale = 0.5,
+                                  jittered_points = T,
+                                  position = ggridges::position_points_jitter(width = 0, height = 0),
+                                  point_shape = '|', point_size = 3, point_alpha = 0.8) +
+    ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank()) +
+    ggplot2::scale_colour_manual(values = stats::setNames(clust_cols, clust_levels)) +
+    ggplot2::scale_fill_manual(values = stats::setNames(clust_cols, clust_levels)) +
+    ggplot2::xlab(lab)
   
   return(p)
 }
@@ -243,7 +218,7 @@ plot_time <- function (data, clust, orientation = "portrait", lab = NULL, palett
 #' 
 #' @description
 #' This function plots 2D objective space.
-#' @inheritParams plot_2d_objspace
+#' @inheritParams plot_objspace
 #' @param colour a string of the attribute to be coloured. It must be "r", "batch" or "k_o".
 #' @return a ggplot.
 #' @seealso [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
@@ -265,20 +240,17 @@ plot_trace <- function(pop, alpha = 0.8, colour = c("r", "batch", "k_o"), palett
       p <- p + ggplot2::scale_colour_gradientn(colours = palette) 
     }
     if (colour == "batch" | colour == "k_o") {
-      p <- p + ggplot2::scale_colour_manual(values = palette,
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = palette)
     }
   } else {
     if (colour == "r") {
       p <- p + ggplot2::scale_colour_gradientn(colours = MetBrewer::met.brewer("Hokusai3")) 
     }
     if (colour == "batch") {
-      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Egypt", n = length(unique(pop$trace$batch))),
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Egypt", n = length(unique(pop$trace$batch))))
     }
     if (colour == "k_o") {
-      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Archambault", n = length(unique(pop$trace$k_o))),
-                                            guide = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+      p <- p + ggplot2::scale_colour_manual(values = MetBrewer::met.brewer("Archambault", n = length(unique(pop$trace$k_o))))
     }
   }
   return(p)
@@ -308,7 +280,7 @@ pivot_trace <- function (df) {
 #' 
 #' @description
 #' This function plots multi-objective optimisation (MOO) quality.
-#' @inheritParams plot_2d_objspace
+#' @inheritParams plot_objspace
 #' @param indicator a string of MOO quality indicator. It must be either "igd", "igd_plus" or "hv".
 #' @return a ggplot.
 #' @export

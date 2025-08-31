@@ -4,14 +4,12 @@
 \alias{plot_time}
 \title{Plot data in time}
 \usage{
-plot_time(data, clust, orientation = "portrait", lab = NULL, palette = NULL)
+plot_time(data, clust, lab = NULL, palette = NULL)
 }
 \arguments{
 \item{data}{a data frame}
 
 \item{clust}{a numeric vector of cluster assignemnt.}
-
-\item{orientation}{a string of orientation of the plot. It must be either "portrait" or "landscape".}
 
 \item{lab}{a string of label passed on to \code{\link[ggplot2:labs]{ggplot2::xlab()}}. Default is NULL.}
 
