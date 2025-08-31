@@ -607,11 +607,11 @@ blob_search_iter <- function(data, k, r, iter = 3L,
     data$clust <- NA
     start <- sample(1:nrow(data), k)
     data$clust[start] <- 1:k
+    data$order <- 1:nrow(data)
   } else {
     # start_blobs() to pick centroids
     data <- start_blobs(data = data, k = k, k_matrix = k_matrix)
   }
-  
   
   # initialise counter counting find_blobs()
   t <- 0
@@ -777,7 +777,6 @@ blob_search_filter <- function(blob, k_matrix, crs, filter_intersects = T, filte
 blob_search <- function(data, k, r, iter = 3L,
 					              converge_ari = NULL, crs = 4326,
                         filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
-  
   args <- list(...)
   k_matrix <- args$k_matrix
   beta <- args$beta
@@ -984,7 +983,6 @@ convert_to_pop <- function(blob_list) {
 blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L,
                            converge_ari = NULL, crs = 4326,
                            filter_intersects = T, filter_clustsize = T, max_na = 0.05, ...) {
-  
   args <- list(...)
   k_matrix <- args$k_matrix
   beta <- args$beta
@@ -995,7 +993,7 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L,
     if (is.null(beta)) stop("beta is missing!")
     k_matrix <- distmat_to_kmat(space_distmat, beta) # this should be computed outside as early as possible outside!
   }
-  
+
   if (length(r_range) > 1) {
     # LHS sampling for more evenly distributed parameters
     lhs_samples <- lhs::randomLHS(run,1)
@@ -1004,7 +1002,7 @@ blob_populate <- function (data, k, r_range = c(0.5,1), iter = 3L, run = 10L,
   } else {
     r_samples <- rep(r_range, run)
   }
-  
+
   blob_list <- future.apply::future_lapply(r_samples, function (r) {
     blob_search(data = data, k = k, r = r, iter = iter,
                 converge_ari = converge_ari, crs = crs,
