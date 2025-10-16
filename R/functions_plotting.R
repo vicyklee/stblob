@@ -88,7 +88,7 @@ plot_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"), 
 #' @param data a data frame
 #' @param clust a numeric vector of cluster assignemnt. Default is NA.
 #' @param space a string of the space data plotted in. It must be either "earth" or "euclidean".
-#' @param hull a logical operator. Should convex hulls be drawn? Default is F.
+#' @param hull a logical operator. Should convex hulls be drawn? Default is FALSE.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] and [sf::st_transform()]. Default is NULL
 #' @param lab a string vector of length 2. The first one is passed on to [ggplot2::xlab()] and the second [ggplot2::ylab()]. Default is NULL.
 #' @param palette See `value` of [ggplot2::scale_colour_manual()]. Default is NULL. This uses the palette presets from [MetBrewer::met.brewer()].
@@ -96,7 +96,14 @@ plot_objspace <- function (pop, obj, colour = c("r", "batch", "k_o", "pareto"), 
 #' @seealso [sf::st_as_sf()], [sf::st_transform()], [ggplot2::labs()], [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
 #' @export
 
-plot_space <- function (data, clust = NA, space, hull = F, crs = NULL, lab = NULL, palette = NULL) {
+plot_space <- function (data,
+                        clust = NA,
+                        space = c("earth", "euclidean"),
+                        crs = NULL,
+                        hull = FALSE,
+                        hull_convex_ratio = 1,
+                        lab = NULL,
+                        palette = NULL) {
   space <- match.arg(space, choices = c("earth", "euclidean"))
   if (space == "earth" & is.null(crs)) crs <- 4036
   if (space == "euclidean" & is.null(crs)) crs <- NA
@@ -147,7 +154,7 @@ plot_space <- function (data, clust = NA, space, hull = F, crs = NULL, lab = NUL
       dplyr::filter(!is.na(clust)) %>%
       dplyr::group_by(clust) %>%
       dplyr::summarise(geometry = sf::st_combine(geometry)) %>%
-      sf::st_convex_hull()
+      sf::st_concave_hull(ratio = hull_convex_ratio)
     if (space == "euclidean") {
       if (is.null(lab)) lab <- c("x", "y")
       p <- ggplot2::ggplot() +
