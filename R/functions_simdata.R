@@ -4,9 +4,9 @@
 #' Generate coordinates on a circle outline
 #' 
 #' @description
-#' This function generates coordinates of equal distances on a circle outline centred at (0,0).
+#' This function generates coordinates of equal distances on a circle outline centered at (0,0).
 #'
-#' @param radius a numeric value of radius from the the centre.
+#' @param radius a numeric value of radius from the center.
 #' @param n an integer of the number of vertices. 
 #'
 #' @returns a numeric matrix of coordinates.
@@ -26,6 +26,7 @@ gen_circle_coords <- function(radius, n) {
   
   return(coords)
 }
+
 #------------------------------------------------------------------------------#
 #' Generate Gaussian data clusters
 #' 
