@@ -6,35 +6,35 @@
 \usage{
 plot_space(
   data,
-  clust = NA,
-  space,
-  hull = F,
+  clust,
+  space = c("earth", "euclidean"),
+  coords = c(1, 2),
   crs = NULL,
-  lab = NULL,
-  palette = NULL
+  hull = FALSE,
+  hull_convex_ratio = 0.8
 )
 }
 \arguments{
 \item{data}{a data frame}
 
-\item{clust}{a numeric vector of cluster assignemnt. Default is NA.}
+\item{clust}{a numeric vector of cluster assignment.}
 
 \item{space}{a string of the space data plotted in. It must be either "earth" or "euclidean".}
 
-\item{hull}{a logical operator. Should convex hulls be drawn? Default is F.}
+\item{coords}{a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.}
 
-\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and \code{\link[sf:st_transform]{sf::st_transform()}}. Default is NULL}
+\item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and \code{\link[sf:st_transform]{sf::st_transform()}}. Default is NULL.}
 
-\item{lab}{a string vector of length 2. The first one is passed on to \code{\link[ggplot2:labs]{ggplot2::xlab()}} and the second \code{\link[ggplot2:labs]{ggplot2::ylab()}}. Default is NULL.}
+\item{hull}{a Boolean. Should convex hulls be drawn? Default is FALSE.}
 
-\item{palette}{See \code{value} of \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}. Default is NULL. This uses the palette presets from \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}.}
+\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.}
 }
 \value{
-a ggplot.
+a \code{ggplot} object.
 }
 \description{
 This function plots data in space.
 }
 \seealso{
-\code{\link[sf:st_as_sf]{sf::st_as_sf()}}, \code{\link[sf:st_transform]{sf::st_transform()}}, \code{\link[ggplot2:labs]{ggplot2::labs()}}, \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}, \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}
+\code{\link[sf:st_as_sf]{sf::st_as_sf()}}, \code{\link[sf:st_transform]{sf::st_transform()}}
 }

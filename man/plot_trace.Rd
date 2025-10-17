@@ -4,16 +4,14 @@
 \alias{plot_trace}
 \title{Plot trace summary}
 \usage{
-plot_trace(pop, alpha = 0.8, colour = c("r", "batch", "k_o"), palette = NULL)
+plot_trace(pop, colour = c("r", "batch", "k_o"), alpha = 0.8)
 }
 \arguments{
 \item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}
 
+\item{colour}{a string of the attribute to be coloured. It must be either "r", "batch" or "k_o".}
+
 \item{alpha}{See <\code{\link[ggplot2:aes_colour_fill_alpha]{aes-colour-fill-alpha}}>.}
-
-\item{colour}{a string of the attribute to be coloured. It must be "r", "batch" or "k_o".}
-
-\item{palette}{See \code{value} of \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}. Default is NULL. This uses the palette presets from \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}.}
 }
 \value{
 a ggplot.

@@ -8,30 +8,24 @@ plot_objspace(
   pop,
   obj,
   colour = c("r", "batch", "k_o", "pareto"),
-  normalise = T,
-  palette = NULL,
+  normalise = TRUE,
   alpha = 0.8
 )
 }
 \arguments{
 \item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}
 
-\item{obj}{a string vector of length 2 that indicate the objectives.}
+\item{obj}{a string vector of length 2 that indicates the objectives.}
 
-\item{colour}{a string of the attribute to be coloured. It must be "pareto", "r", "batch" or "k_o".}
+\item{colour}{a string of the attribute to be coloured. It must be either "pareto", "r", "batch" or "k_o".}
 
-\item{normalise}{a logical operator. Should values of objectives be normalised? Default is T.}
-
-\item{palette}{See \code{value} of \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}. Default is NULL. This uses the palette presets from \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}.}
+\item{normalise}{a Boolen. Should values of objectives be normalised? Default is TRUE.}
 
 \item{alpha}{See <\code{\link[ggplot2:aes_colour_fill_alpha]{aes-colour-fill-alpha}}>.}
 }
 \value{
-a ggplot.
+a \code{ggplot} object.
 }
 \description{
 This function plots the objective space.
-}
-\seealso{
-\code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}, \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}
 }

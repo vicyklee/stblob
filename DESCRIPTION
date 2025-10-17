@@ -6,23 +6,25 @@ Authors@R:
            comment = c(ORCID = "0009-0001-5598-9632"))
 Description: What the package does (one paragraph).
 License: MIT + file LICENSE
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2.9000
+Depends: 
+    R (>= 2.10)
 Imports: 
-    dplyr,
     future.apply,
     geosphere,
-    ggplot2,
-    ggridges,
     lhs,
     magrittr,
     mclust,
-    MetBrewer,
     moocore,
     mvtnorm,
-    progressr,
+    sf
+Suggests: 
+    dplyr,
+    ggplot2,
+    ggridges,
     rnaturalearth,
     scales,
-    sf,
     tidyr
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2.9000

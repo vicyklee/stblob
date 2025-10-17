@@ -4,15 +4,15 @@
 \alias{plot_moo_quality}
 \title{Plot multi-objective optimisation quality}
 \usage{
-plot_moo_quality(pop, indicator = c("igd", "igd_plus", "hv"))
+plot_moo_quality(pop_moo, indicator = c("igd", "igd_plus", "hv"))
 }
 \arguments{
-\item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}
+\item{pop_moo}{a \code{pop_moo} object; see also \code{\link[=blob_moo]{blob_moo()}}.}
 
 \item{indicator}{a string of MOO quality indicator. It must be either "igd", "igd_plus" or "hv".}
 }
 \value{
-a ggplot.
+a \code{ggplot} object.
 }
 \description{
 This function plots multi-objective optimisation (MOO) quality.

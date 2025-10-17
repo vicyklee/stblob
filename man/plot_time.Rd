@@ -4,23 +4,15 @@
 \alias{plot_time}
 \title{Plot data in time}
 \usage{
-plot_time(data, clust, lab = NULL, palette = NULL)
+plot_time(data, clust, age = 3)
 }
 \arguments{
 \item{data}{a data frame}
 
 \item{clust}{a numeric vector of cluster assignemnt.}
 
-\item{lab}{a string of label passed on to \code{\link[ggplot2:labs]{ggplot2::xlab()}}. Default is NULL.}
-
-\item{palette}{See \code{value} of \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}. Default is NULL. This uses the palette presets from \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}.}
-}
-\value{
-a ggplot.
+\item{age}{a string or numeric value indicating the column of age. Default is the third column.}
 }
 \description{
 This function plots data in time
-}
-\seealso{
-\code{\link[ggplot2:labs]{ggplot2::labs()}}, \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}, \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}
 }
