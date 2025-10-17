@@ -17,7 +17,7 @@
 compute_distmat <- function(data, method = "geodesic") {
   method <- match.arg(method, choices = c("geodesic", "euclidean"))
   data <- as.matrix(data)
-  
+  #-------------------------------------------------------------------#
   if (method == "geodesic") {
     distmat <- as.matrix(geosphere::distm(data, fun = geosphere::distGeo)) / 1000
   }
@@ -109,7 +109,6 @@ diffusion_kernel <- function(L, beta) {
   eig <- eigen(L, symmetric = TRUE)
   U <- eig$vectors
   lambda <- eig$values
-  
   exp_lambda <- exp(-beta * lambda)
   kmat <- U %*% diag(exp_lambda) %*% t(U)
   return(kmat)
@@ -248,7 +247,7 @@ min_erankdiff <- function(beta, L, k) {
 #' This is utilised to calculate the effective rank of the kernel matrix for a given \eqn{\beta}
 #' and the optimisation is performed by [stats::optim()] using "L-BFGS-B" method with a lower bound of 0.001.
 #'  
-#' @inherit stats::optim returns
+#' @inherit stats::optim return
 #' @seealso [compute_erank()], [stats::optim()]
 #' @references 
 #' Roy, O., & Vetterli, M. (2007, September). The effective rank: A measure of effective dimensionality. In 2007 15th European signal processing conference (pp. 606-610). IEEE.
@@ -260,14 +259,14 @@ min_erankdiff <- function(beta, L, k) {
 #' @export
 
 optim_beta <- function(L, k, par = 10) {
-  out <- optim(par = par,
-               fn = min_erankdiff,
-               L = L,
-               k = k,
-               lower = 0.001,
-               method = "L-BFGS-B",
-               control = list(factr = 1e11) # less precise but does not affect the result (it actually converges at an optimised beta even though an error message on convergence is returned)
-               )
+  out <- stats::optim(par = par,
+                      fn = min_erankdiff,
+                      L = L,
+                      k = k,
+                      lower = 0.001,
+                      method = "L-BFGS-B",
+                      control = list(factr = 1e11) # less precise but does not affect the result (it actually converges at an optimised beta even though an error message on convergence is returned)
+  )
   return(out)
 }
 
@@ -336,7 +335,7 @@ distmat_to_kmat <- function(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par 
 #' @details 
 #' This function is a wrapper of [compute_distmat()] and [distmat_to_kmat()]. Only geodesic or euclidean distance is available for computing the distances. See [distmat_to_kmat()] for more details.
 #' 
-#' @inherit distmat_to_kmat returns
+#' @inherit distmat_to_kmat return
 #' 
 #' @export
 
@@ -397,22 +396,22 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL) {
 
 intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hull_convex_ratio = 0) {
   data <- as.data.frame(data)
-  
+  #-------------------------------------------------------------------#
   # if (is.null(crs)) { crs <- NA } # Euclidean
   if (!is.null(clust)) { data$clust <- clust }
-  
+  #-------------------------------------------------------------------#
   data_sf <- sf::st_as_sf(data, coords = coords, crs = crs)
-  
+  #-------------------------------------------------------------------#
   # obtain convex/concave hulls
   hulls <- stats::aggregate(data_sf$geometry, by = list(clust = data_sf$clust), sf::st_union) 
   hulls <- sf::st_as_sf(hulls) 
   hulls <- sf::st_concave_hull(hulls, ratio = hull_convex_ratio) # convex hulls
-  
+  #-------------------------------------------------------------------#
   # indicate TRUE/FALSE if there are any intersects
   intersects <- sf::st_intersects(hulls$geometry, sparse = F)
   diag(intersects) <- NA
   bool <- if (any(intersects == TRUE, na.rm = TRUE)) TRUE else FALSE
-  
+  #-------------------------------------------------------------------#
   return(bool)
 }
 
@@ -428,21 +427,20 @@ intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hul
 
 reorder_clust <- function(clust) {
   # e.g. c(1,4,4,2) will become c(1,2,2,3)
-  
   if(length(unique(clust)) == 1) return(rep(1, length(clust)))
-  
+  #-------------------------------------------------------------------#
   sets <- list()
   for (i in 1:length(clust)) {
     sets[[i]] <- which(clust == clust[i])
     if (length(sets[[i]]) == 0) sets[[i]] <- NA
   }
-  
+  #-------------------------------------------------------------------#
   max_set_length <- max(sapply(sets, length))
   sets <- lapply(sets, function(x) if (length(x) < max_set_length) {c(x, rep(0, max_set_length - length(x)))} else {x})
   sets <- do.call(rbind, sets)
   sets <- unique(sets)
   sets <- as.matrix(sets[rowSums(sets) != 0, ]) # remove empty clusters
-  
+  #-------------------------------------------------------------------#
   # put NA to the back
   # count the number of rows with NA
   n_row <- nrow(sets)
@@ -451,13 +449,14 @@ reorder_clust <- function(clust) {
     sets <- as.matrix(stats::na.omit(sets))
     sets <- rbind(sets,NA)
   }
-  
+  #-------------------------------------------------------------------#
   # reorder cluster labels
   for (i in 1:nrow(sets)) {
     for (j in 1:ncol(sets)) {
       clust[sets[i,j]] <- i
     }
   }
+  #-------------------------------------------------------------------#
   return(clust)
 }
 
@@ -499,20 +498,19 @@ eval_blobs <- function(data,
                        w_knn = NULL,
                        l_normalise = NULL,
                        beta_par = NULL) {
-  
   # total number of points
   N <- nrow(data)
   # total number of clusters
   k <- length(unique(stats::na.omit(data$clust))) # NA is excluded
   # initialise empty vectors 
   space_ss <- time_range <- time_evenness <- n <- numeric(k)
-  
+  #-------------------------------------------------------------------#
   # compute space_kmat
   if (is.null(space_kmat)) {
     if (is.null(w_knn)) w_knn <- 7
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
-    
+    #-------------------------------------------------------------------#
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -538,24 +536,26 @@ eval_blobs <- function(data,
   } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
-  
+  #-------------------------------------------------------------------#
   # loop over k to obtain within cluster statistics
   for (j in 1:k) {
     clust_points <- which(data$clust == j)
     if (length(clust_points) == 0) next
-    # data_k <- subset(data, data$clust == j)
-    
+    data_k <- subset(data, data$clust == j)
+    #-------------------------------------------------------------------#
     # spatial objective
     # kernel k means cost function
     space_ss[j] <- sum(compute_spacecost(space_kmat = space_kmat, clust_points = clust_points, i = NULL)[clust_points])
+    #-------------------------------------------------------------------#
     # temporal objectives
     time_range[j] <- max(data_k[ , age], na.rm = T) - min(data_k[ ,age], na.rm = T)
     time_evenness[j] <- 1 / (1 + stats::var(diff(sort(data_k[ , age])))) # NA if there are fewer than 3 data points
+    #-------------------------------------------------------------------#
     # other constraint related statistics
     n[j] <- length(clust_points)
   }
-  
-  # Calculate the summary statistics
+  #-------------------------------------------------------------------#
+  # calculate the summary statistics
   space_wcss <- sum(space_ss)
   time_range_mean <- mean(time_range, na.rm = TRUE)
   time_range_sd <- stats::sd(time_range, na.rm = TRUE)
@@ -564,15 +564,15 @@ eval_blobs <- function(data,
   size_diff <- max(n, na.rm = TRUE) - min(n, na.rm = TRUE)
   size_mean <- mean(n, na.rm = TRUE)
   size_sd <- stats::sd(n, na.rm = TRUE)
-  
+  #-------------------------------------------------------------------#
   # evaluate failed clust
   # n.points must be > N / k / 2
   clust_below_size <- which(n < N/k/2)
   n_fail <- sum(n[clust_below_size])
-  
+  #-------------------------------------------------------------------#
   # evaluate if blobs are intersecting in space
   intersects <- intersects_bool(data = data, coords = coords, crs = crs, hull_convex_ratio = hull_convex_ratio)
-  
+  #-------------------------------------------------------------------#
   # return a data frame of all the statistics
   summary <- data.frame(k = k,
                         space_wcss = space_wcss,
@@ -585,8 +585,11 @@ eval_blobs <- function(data,
                         size_sd = size_sd,
                         n_fail = n_fail,
                         intersects = intersects)
-  
-  return(list(summary = summary, clust_below_size = clust_below_size, space_kmat_optim_out = space_kmat_optim_out))
+  #-------------------------------------------------------------------#
+  eval_blobs_out <- list(summary = summary,
+                         clust_below_size = clust_below_size,
+                         space_kmat_optim_out = space_kmat_optim_out)
+  return(eval_blobs_out)
 }
 
 #------------------------------------------------------------------------------#
@@ -601,10 +604,10 @@ eval_blobs <- function(data,
 #' @inheritParams compute_spacecost
 #'
 #' @returns a data frame with assigned starting clusters as a column.
+#' 
 #' @export
 
 start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
-  
   if (random_start == TRUE) {
     data <- as.data.frame(data)
     data$clust <- NA
@@ -613,21 +616,22 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
     data$order <- 1:nrow(data)
     return(data)
   }
-  
+  #-------------------------------------------------------------------#
   data <- as.data.frame(data)
   # assign an index to put data back into correct order at the end
   data$order <- 1:nrow(data)
   # initialise one point each to k blobs
   data$clust <- NA
-  
+  #-------------------------------------------------------------------#
   # a bit faster to handle data as a matrix
   data <- as.matrix(data)
-  
+  #-------------------------------------------------------------------#
   # start from k roughly equally spaced random locations 
   # (just permute a bunch and pick the one with the least smallest distance)
   N <- 100
   mat <- matrix(, N, k)
   max_similarity <- numeric(N)
+  #-------------------------------------------------------------------#
   for(n in 1:N){
     i <- sort(sample(1:nrow(data), size = k)) # sample k points from the data, sort them 
     mat[n, ] <- i # store sorted index in the matrix by row
@@ -637,13 +641,14 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
     for(c in 1:NC) similarities[c] <- space_kmat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
     max_similarity[n] <- max(similarities) # find the maximum hence minimum separation
   }
+  #-------------------------------------------------------------------#
   # pick the set with largest minimum distance between two points to ensure maximum separation between k points;
   # pick the first one if two are tied 
   start <- mat[which(max_similarity == min(max_similarity))[1], ]
   # Assign cluster memberships to the starting points
   data[start, "clust"] <- 1:k
   data <- as.data.frame(data)
-  
+  #-------------------------------------------------------------------#
   return(data)
 }
 
@@ -674,16 +679,18 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
 #' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
 #'
 #' @returns a data frame with assigned clusters as a column.
+#' 
 #' @export
 
 find_blobs <- function(data, k, r, space_kmat, age = 3) {
   if (is.null(data$order)) stop("Did you forget to run start_blobs()?")
-  
+  #-------------------------------------------------------------------#
   # a bit faster to handle data as a matrix
   data <- as.matrix(data)
-  
+  #-------------------------------------------------------------------#
   # for indexing speed, keep those assigned at the top
   data <- data[order(data[ ,"clust"]), ]
+  #-------------------------------------------------------------------#
   # randomise the order of the points to be assigned (tba)
   tba_points <- which(is.na(data[ ,"clust"])) # to be assigned
   # for when iteration is implemented there will be no NA
@@ -692,57 +699,58 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
   a_points <- which(!1:nrow(data) %in% tba_points) # assigned
   # assigned at the top, randomised unassigned rows that follow
   data <- data[c(a_points,tba_points), ] 
-  
+  #-------------------------------------------------------------------#
   # Reorder kmat to match the reordered data
   order <- data[ ,"order"]
   space_kmat <- space_kmat[order, order]
-  
+  #-------------------------------------------------------------------#
   # Extract clust to make the code cleaner
   clust <- data[,"clust"]
-  
+  #-------------------------------------------------------------------#
   # initialise stat matrices for the unassigned points
   start <- if (length(a_points) > nrow(data)) 1 else length(a_points) + 1
   N <- length(start:nrow(data))
   space_cost <- time_cost <- n <- numeric(k)
-  
+  #-------------------------------------------------------------------#
   # loop through every point (incremental updating)
   for (i in start:nrow(data)) {
+    #-------------------------------------------------------------------#
     # loop through every k
     for (j in 1:k) {
       clust_points <- which(clust == j)
       n[j] <- length(clust_points)
       if (n[j] == 0) next
+      #-------------------------------------------------------------------#
       # compute the spatial cost == j
       # calculate the distance to the centroid in Hilbert space
       # O(c^2) is unavoidable 
       space_cost[j] <- compute_spacecost(space_kmat = space_kmat,
                                          clust_points = clust_points,
                                          i = i)
-      
+      #-------------------------------------------------------------------#
       # compute the temporal cost
       clust_points_tmp <- if (i %in% clust_points) clust_points[clust_points != i] else clust_points
-      
+      #-------------------------------------------------------------------#
       if (length(clust_points_tmp) == 0) {
         time_cost[j] <- 0  # only i was in the cluster
       } else {
         time_cost[j] <- min(abs(data[i, age] - data[clust_points_tmp, 3]))
       }
-      
     }
-    
+    #-------------------------------------------------------------------#
     # normalise the cost
     space_cost_norm <- (space_cost - min(space_cost, na.rm = T)) / (max(space_cost, na.rm = T) - min(space_cost, na.rm = T))
     time_cost_norm <- (time_cost - min(time_cost, na.rm = T)) / (max(time_cost, na.rm = T) - min(time_cost, na.rm = T))
     space_cost_norm[is.na(space_cost_norm)] <- 0
     time_cost_norm[is.na(time_cost_norm)] <- 0
-    
+    #-------------------------------------------------------------------#
     # weighted scalarising (into a single cost)
     cost <- space_cost_norm*r - time_cost_norm*(1-r)
-    
+    #-------------------------------------------------------------------#
     # assign cluster
     # check if there are tied clusters
     clust_tmp <- which(cost == min(cost, na.rm = T))
-    
+    #-------------------------------------------------------------------#
     if (length(clust_tmp) > 1) {
       # first check if one of those have fewer points
       n_clust_tmp <- n[clust_tmp]
@@ -760,11 +768,12 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
       clust[i] <- clust_tmp
     }
   }
-  
+  #-------------------------------------------------------------------#
   # Put the data back to order
   data[ ,"clust"] <- clust
   data <- data[order(data[ ,"order"]), ]
   data <- as.data.frame(data)
+  #-------------------------------------------------------------------#
   return(data)
 }
 
@@ -777,7 +786,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' @inheritParams start_blobs
 #' @inheritParams find_blobs
 #' @inheritParams eval_blobs
-#' @param iter an integer of the number of iterations. Default is 3.
+#' @param iter an integer of the number of iterations. Default is 10.
 #' @param converge_ari a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
 #' @param filter_intersects a Boolean to remove an assignment with intersects in space? Default is TRUE.
 #' @param filter_clustsize a Boolean to assign NA to clustes below the critical size. Default is TRUE.
@@ -808,11 +817,13 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' }
 #'
 #' @seealso [distmat_to_kmat()] and [sf::st_as_sf()]
+#'
+#' @export
 
 blob_search <- function(data,
                         k,
                         r,
-                        iter = 3,
+                        iter = 10,
                         converge_ari = NULL,
                         coords = c(1,2),
                         age = 3,
@@ -828,16 +839,12 @@ blob_search <- function(data,
                         w_knn = NULL,
                         l_normalise = NULL,
                         beta_par = NULL) {
-  
-  #----------------------------------------------------------------------------#
-  # spatial kernal matrix
-  #----------------------------------------------------------------------------#
   # compute space_kmat
   if (is.null(space_kmat)) {
     if (is.null(w_knn)) w_knn <- 7
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
-    
+    #-------------------------------------------------------------------#
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -863,31 +870,30 @@ blob_search <- function(data,
   } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
-  
-  #----------------------------------------------------------------------------#
+  #-------------------------------------------------------------------#
   # search algorithm
-  #----------------------------------------------------------------------------#
   # start_blobs() to pick centroids
   data <- start_blobs(data = data, k = k, space_kmat = space_kmat, random_start = random_start)
-  
+  #-------------------------------------------------------------------#
   # initialise counter counting find_blobs()
   t <- 0
-  
   # intialise trace table
   trace <- data.frame()
-  
+  #-------------------------------------------------------------------#
   for (i in 1:iter) {
-    
     data_old <- data
+    #-------------------------------------------------------------------#
     # find_blobs()
     data <- find_blobs(data = data, k = k, r = r, age = age, space_kmat = space_kmat)
+    #-------------------------------------------------------------------#
     # count find_blobs() executed
     t <- t + 1
-    
+    #-------------------------------------------------------------------#
     if (t > 0) {
+      #-------------------------------------------------------------------#
       # check convergence
       ari <- mclust::adjustedRandIndex(data$clust, data_old$clust)
-      
+      #-------------------------------------------------------------------#
       # eval_blobs()
       eval_out <- eval_blobs(data,
                              coords = coords,
@@ -900,25 +906,22 @@ blob_search <- function(data,
       trace_newrow$iter <- t
       trace_newrow$ari <- ari
       trace <- rbind(trace, trace_newrow)
-      
+      #-------------------------------------------------------------------#
       # if converged between t and t-1, break
       if (!is.null(converge_ari)) {
         if (all(ari >= converge_ari) == TRUE & t >= 3) break
       }
     }
   }
-  
+  #-------------------------------------------------------------------#
   trace$r <- r
   summary <- trace[nrow(trace), ]
-  
   # order is not useful in the result, remove the column
   data$order <- NULL
-  
-  #----------------------------------------------------------------------------#
+  #-------------------------------------------------------------------#
   # filters / constraints
-  #----------------------------------------------------------------------------#
   N <- nrow(data)
-  
+  #-------------------------------------------------------------------#
   # 1. intersects
   if (filter_intersects == T) {
     intersects <- summary$intersects
@@ -927,19 +930,21 @@ blob_search <- function(data,
       return(1)
     }
   }
-  
+  #-------------------------------------------------------------------#
   # 2. cluster size
   # initialise n_removed column. If no point is removed, the entries will all be 0
   summary$n_removed <- 0
-  
   if (filter_clustsize == T) {
     if (length(clust_below_size) > 0) {
+      #-------------------------------------------------------------------#
       # assign NA to removed clusters
       n_removed <- summary$n_fail
       data$clust[which(data$clust %in% clust_below_size)] <- NA
+      #-------------------------------------------------------------------#
       # reassign the cluster number
       # make sure there is no gap in the sequence of k
       data$clust <- reorder_clust(data$clust)
+      #-------------------------------------------------------------------#
       # update eval_out$summary
       eval_out_updated <- eval_blobs(data,
                                      coords = coords,
@@ -952,25 +957,23 @@ blob_search <- function(data,
       summary$n_removed <- n_removed
     }
   } else {
+    #-------------------------------------------------------------------#
     # reassign the cluster number
     # make sure there is no gap in the sequence of k
     data$clust <- reorder_clust(data$clust)
   }
-  
+  #-------------------------------------------------------------------#
   # 3. filter too many NAs and k < 2
   # return NULL if too many points are removed
   if (summary$n_removed > N * max_na) return(2)
   if (summary$k < 2) return(3)
-  
+  #-------------------------------------------------------------------#
   # 4. remove some columns
   summary$n_fail <- NULL # confusing to have both n_removed and this in the output
   trace$n_fail <- NULL # confusing to have both n_removed and this in the output
-  
+  #-------------------------------------------------------------------#
   # 5. remove clust.below.size as filter has been applied so it is irrelevant to the downstream
   clust_below_size <- NULL
-  
-  #-------------------------------------------------------------------#
-  # polishing the output
   #-------------------------------------------------------------------#
   summary <- summary[, c("k", "r",
                          "space_wcss",
@@ -979,7 +982,6 @@ blob_search <- function(data,
                          "size_mean", "size_sd", "size_diff",
                          "intersects", "n_removed",
                          "iter", "ari")]
-
   trace <- trace[, c("k", "r",
                      "space_wcss",
                      "time_range_mean", "time_range_sd",
@@ -987,12 +989,16 @@ blob_search <- function(data,
                      "size_mean", "size_sd", "size_diff",
                      "intersects",
                      "iter", "ari")]
-  
   rownames(summary) <- NULL
   rownames(trace) <- NULL
-  
-  return(list(data = data, summary = summary, trace = trace,
-              clust_below_size = clust_below_size, space_kmat_optim_out = space_kmat_optim_out))
+  #-------------------------------------------------------------------#
+  blob <- list(data = data,
+               summary = summary,
+               trace = trace,
+               clust_below_size = clust_below_size,
+               space_kmat_optim_out = space_kmat_optim_out)
+  class(blob) <- "blob"
+  return(blob)
 }
 
 #------------------------------------------------------------------------------#
@@ -1021,7 +1027,7 @@ blob_search <- function(data,
 find_dup <- function (clust, ari = 1) {
   # as NA is ignored by mclust::adjustedRandIndex()
   clust[is.na(clust)] <- 0
-  
+  #-------------------------------------------------------------------#
   # number of solutions
   n_sol <- nrow(clust)
   # get all combination of pairs
@@ -1030,36 +1036,42 @@ find_dup <- function (clust, ari = 1) {
   pairwise_ari <- future.apply::future_vapply(1:ncol(pairs),
                                               function(x) mclust::adjustedRandIndex(clust[pairs[1,x], ], clust[pairs[2,x], ]),
                                               numeric(1),
-                                              future.seed = T)
-  
+                                              future.seed = TRUE)
+  #-------------------------------------------------------------------#
   # index the pairs with ari >= ari
   pairs_dup_idx <- which(pairwise_ari >= ari)
   # subset the columns of duplicated pairs
-  pairs_dup <- pairs[, pairs_dup_idx, drop = F]
-  
+  pairs_dup <- pairs[, pairs_dup_idx, drop = FALSE]
+  #-------------------------------------------------------------------#
   # if a ~ b and b ~ c, then not necessarily a ~ c
   # the following steps makes sure they are the pairs with ari >= ari.dup 
   if (ncol(pairs_dup) > 1) {
+    #-------------------------------------------------------------------#
     # dependence boolean
     pairs_dup_depend_bool <- logical()
     for (i in 2:ncol(pairs_dup)) {
       pairs_dup_depend_bool[i] <- pairs_dup[1, i] %in% pairs_dup[2, 1:(i-1)]
     }
-    pairs_dup_depend_idx <- which(pairs_dup_depend_bool == T)
+    pairs_dup_depend_idx <- which(pairs_dup_depend_bool == TRUE)
+    #-------------------------------------------------------------------#
     # remove the dependent columns 
     if (length(pairs_dup_depend_idx) > 0) {
-      pairs_dup <- pairs_dup[ , -pairs_dup_depend_idx, drop = F]
+      pairs_dup <- pairs_dup[ , -pairs_dup_depend_idx, drop = FALSE]
     }
   }
-  
+  #-------------------------------------------------------------------#
   # note it is sensitive to order
   # second row is considered the duplicate of the first row
   idx <- unique(pairs_dup[2, ])
-  
+  #-------------------------------------------------------------------#
   # frequency of duplicates
   freq <- table(pairs_dup[1,])
-  
-  return(list(idx = idx, pairwise_ari = pairwise_ari, freq = freq, pairs_dup = pairs_dup))
+  #-------------------------------------------------------------------#
+  dup_out <- list(idx = idx,
+                  pairwise_ari = pairwise_ari,
+                  freq = freq,
+                  pairs_dup = pairs_dup)
+  return(dup_out)
 }
 #------------------------------------------------------------------------------#
 #' Convert a list of blob objects to a pop object
@@ -1081,66 +1093,68 @@ find_dup <- function (clust, ari = 1) {
 
 convert_to_pop <- function(blob_list) {
   pop <- blob_list
+  #-------------------------------------------------------------------#
   # count the runs that are filtered out, informative about the range of r to be searched
   filtered_intersects <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 1)
   filtered_intersects <- sapply(filtered_intersects, function(x) if (length(x) != 1) x <- FALSE else x) 
   filtered_intersects <- sum(filtered_intersects)
-  
+  #-------------------------------------------------------------------#
   filtered_size <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 2)
   filtered_size <- sapply(filtered_size, function(x) if (length(x) != 1) x <- FALSE else x) 
   filtered_size <- sum(filtered_size)
-  
+  #-------------------------------------------------------------------#
   filtered_k1 <- lapply(pop, function(x) if (is.list(x)) FALSE else x == 3)
   filtered_k1 <- sapply(filtered_k1, function(x) if (length(x) != 1) x <- FALSE else x) 
   filtered_k1 <- sum(filtered_k1)
-  
+  #-------------------------------------------------------------------#
   # if blob returns 1 or 2, set NULL so rbind in the following step will omit them
   pop <- lapply(pop, function(x) if(!is.list(x)) NULL else x)
+  #-------------------------------------------------------------------#
   # extract each element and add a column to indicate the run
   pop <- do.call(rbind, pop) 
   data_list <- lapply(seq_along(pop[, "data"]), function (i) cbind(pop[, "data"][[i]], run = i))
   summary_list <- lapply(seq_along(pop[, "summary"]), function (i) cbind(pop[, "summary"][[i]], run = i))
   trace_list <- lapply(seq_along(pop[, "trace"]), function (i) cbind(pop[, "trace"][[i]], run = i))
-  
+  #-------------------------------------------------------------------#
   # extract clust
   clust_list <- lapply(seq_along(data_list), function (i) data_list[[i]]$clust)
-  
+  #-------------------------------------------------------------------#
   # redundant to store the whole blob data frame at this step so only clust is kept as output from blobs
   clust <- do.call(rbind, clust_list)
   summary <- do.call(rbind, summary_list)
   trace <- do.call(rbind, trace_list)
-  
+  #-------------------------------------------------------------------#
   # find and filter exact duplicates
   filtered_dup <- 0
-  
   if (!is.null(clust)) {
     summary$dup <- 0
     # Here, clust <- do.call(rbind, clust_list) must return a matrix even if there is only one solution
     if (nrow(clust) > 1) {
       dup <- find_dup(clust, ari = 1)
-      
       if (length(dup$idx) > 0) {
+        #-------------------------------------------------------------------#
         # record the duplicate freq
         summary$dup[as.numeric(names(dup$freq))] <- as.vector(dup$freq)
+        #-------------------------------------------------------------------#
         # filter the duplicates
         clust <- clust[-dup$idx, , drop = F]
         summary <- summary[-dup$idx, ]
         trace <- trace[-which(trace$run %in% dup$idx),]
+        #-------------------------------------------------------------------#
         # record the total no. of dup filtered
         filtered_dup <- length(dup$idx)
       }
     }
+    #-------------------------------------------------------------------#
     # index the summary and trace
     summary$idx <- 1:nrow(summary)
     trace <- merge(trace, summary[, c("idx","run")], by = "run", all.x = TRUE)
   }
-  
-  n_filtered <- data.frame(intersects = filtered_intersects, size = filtered_size, k1 = filtered_k1, dup = filtered_dup)
-  # n_filtered <- c(filtered_intersects, filtered_size, filtered_k1, filtered_dup)
-  # names(n_filtered) <- c("intersects", "size", "k1", "dup")
-  
   #-------------------------------------------------------------------#
-  # polishing the output
+  n_filtered <- data.frame(intersects = filtered_intersects,
+                           size = filtered_size,
+                           k1 = filtered_k1,
+                           dup = filtered_dup)
   #-------------------------------------------------------------------#
   summary <- summary[, c("idx",
                          "k", "r", "run",
@@ -1162,8 +1176,11 @@ convert_to_pop <- function(blob_list) {
   
   rownames(summary) <- NULL
   rownames(trace) <- NULL
-
-  pop <- list(clust = clust, summary = summary, trace = trace, n_filtered = n_filtered)
+  #-------------------------------------------------------------------#
+  pop <- list(clust = clust,
+              summary = summary,
+              trace = trace,
+              n_filtered = n_filtered)
   return(pop)
 }
 
@@ -1177,8 +1194,9 @@ convert_to_pop <- function(blob_list) {
 #' @inheritParams find_blobs
 #' @inheritParams blob_search
 #' @param k an integer value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the number of clusters.
-#' @param r a numeric value or vector of length 2L. If a vector is supplied, they specify the lower and upper bounds of the relative spatial weight. They must be \eqn{[0,1]}. Default is c(0.5,1).
-#' @param run an integer of the number of runs.
+#' @param r a numeric value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the relative spatial weight.
+#' They must be \eqn{[0,1]}. Default is c(0.5,1).
+#' @param run an integer of the number of runs. Default is 100.
 #' 
 #' @details
 #' A diffusion kernel is applied to compute the distance to the centroid in space.]
@@ -1207,13 +1225,14 @@ convert_to_pop <- function(blob_list) {
 #' }
 #' 
 #' @seealso [distmat_to_kmat()], [sf::st_as_sf()], [lhs::randomLHS()], [mclust::adjustedRandIndex()], [future::future], [future.apply::future.apply]
+#'
 #' @export
 
 blob_populate <- function(data,
                           k,
                           r = c(0.5,1),
-                          iter = 3,
-                          run,
+                          iter = 10,
+                          run = 100,
                           converge_ari = NULL,
                           coords = c(1,2),
                           age = 3,
@@ -1229,13 +1248,12 @@ blob_populate <- function(data,
                           w_knn = NULL,
                           l_normalise = NULL,
                           beta_par = NULL) {
-  
   # compute space_kmat
   if (is.null(space_kmat)) {
     if (is.null(w_knn)) w_knn <- 7
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
-    
+    #-------------------------------------------------------------------#
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -1261,7 +1279,7 @@ blob_populate <- function(data,
   } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
-  
+  #-------------------------------------------------------------------#
   # sample r
   if (length(r) == 2) {
     # LHS sampling for more evenly distributed parameters
@@ -1271,15 +1289,17 @@ blob_populate <- function(data,
   } else {
     r_samples <- rep(r, run)
   }
-  
+  #-------------------------------------------------------------------#
   # assign k's lb and ub when NULL
   N <- nrow(data)
   if (is.null(k)) {
     k <- integer(2L)
-    k[1] <- 2L # lower bound
-    k[2] <- as.integer(floor(sqrt(N))) # upper bound, an heuristic to maximise information e.g. 100 points: 10 blobs, 10 points each 
+    # lower bound
+    k[1] <- 2L 
+    # upper bound, an heuristic to maximise information e.g. 100 points: 10 blobs, 10 points each 
+    k[2] <- as.integer(floor(sqrt(N)))
   }
-  
+  #-------------------------------------------------------------------#
   # for single k
   if (length(k) == 1) {
     # run blob_search() in parallel
@@ -1299,10 +1319,9 @@ blob_populate <- function(data,
                   max_na = max_na,
                   space_kmat = space_kmat) 
     }, future.seed = T)
-    
+    #-------------------------------------------------------------------#
     pop <- convert_to_pop(blob_list)
     pop$space_kmat_optim_out <- space_kmat_optim_out
-    
   } else {
     # for a range of k
     if (length(k) == 2) {
@@ -1310,7 +1329,7 @@ blob_populate <- function(data,
       k_vec <- min(k):max(k)
       r_vec <- r_samples
       grid <- expand.grid(k_vec = k_vec, r_vec = r_vec)
-      
+      #-------------------------------------------------------------------#
       # run blob_search() in parallel for all combinations of parameters
       blob_list <- future.apply::future_Map(function(k, r) {
         list(
@@ -1331,7 +1350,7 @@ blob_populate <- function(data,
           k = k
         )
       }, grid$k_vec, grid$r_vec, future.seed = TRUE)
-      
+      #-------------------------------------------------------------------#
       # group runs of same k
       pop_list <- vector("list", k[2])
       for(i in 1:length(blob_list)) {
@@ -1339,32 +1358,31 @@ blob_populate <- function(data,
         # append to pop_list
         pop_list[[m]] <- append(pop_list[[m]], list(blob_list[[i]][["blob"]]))
       }
-      
+      #-------------------------------------------------------------------#
       pop_list <- pop_list[-1] # as the loop starts at 2
       # convert to pop object for each k group
       pop_list <- lapply(pop_list, convert_to_pop) 
-      
+      #-------------------------------------------------------------------#
       # extract each element and add a column to indicate the initial k
       pop <- do.call(rbind, pop_list)
-      
       summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) cbind(pop[ , "summary"][[i]], k_o = i + 1))
       trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) cbind(pop[ , "trace"][[i]], k_o = i + 1)) 
       clust_list <- pop[ ,"clust"]
       n_filtered_list <- pop[ , "n_filtered"]
-      
+      #-------------------------------------------------------------------#
       # redundant to store the whole blob data frame at this step so only clust is kept as output from blobs
       clust <- do.call(rbind, clust_list)
       summary <- do.call(rbind, summary_list)
       trace <- do.call(rbind, trace_list)
       n_filtered <- do.call(rbind, n_filtered_list)
       n_filtered <- cbind(k_o = 2:(nrow(n_filtered) + 1), n_filtered)
-      
+      #-------------------------------------------------------------------#
       # reindex the solutions
       summary$idx <- NULL
       summary$idx <- 1:nrow(summary)
       trace$idx <- NULL
       trace <- merge(trace, summary[, c("idx","k_o","run")], by = c("k_o","run"), all.x = TRUE)
-      
+      #-------------------------------------------------------------------#
       summary <- summary[, c("idx",
                              "k_o", "k", "r", "run",
                              "space_wcss",
@@ -1373,7 +1391,6 @@ blob_populate <- function(data,
                              "size_mean", "size_sd", "size_diff",
                              "intersects", "n_removed",
                              "iter", "ari", "dup")]
-
       trace <- trace[, c("idx",
                          "k_o", "k", "r", "run",
                          "space_wcss",
@@ -1386,9 +1403,14 @@ blob_populate <- function(data,
       rownames(summary) <- NULL
       rownames(trace) <- NULL
       
-      pop <- list(clust = clust, summary = summary, trace = trace, n_filtered = n_filtered, space_kmat_optim_out = space_kmat_optim_out)
+      pop <- list(clust = clust,
+                  summary = summary,
+                  trace = trace,
+                  n_filtered = n_filtered,
+                  space_kmat_optim_out = space_kmat_optim_out)
     }
   }
+  #-------------------------------------------------------------------#
+  class(pop) <- "pop"
   return(pop)
 }
-
