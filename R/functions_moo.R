@@ -10,7 +10,10 @@
 #' @inheritParams find_blobs
 #' @inheritParams blob_search
 #' @inheritParams blob_populate
-#' @param batch an integer of the number of batches.
+#' @param k an integer value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the number of clusters.
+#' @param r a numeric value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the relative spatial weight.
+#' They must be \eqn{[0,1]}. Default is c(0.5,1).
+#' @param batch an integer of the number of batches. Default is 5.
 #'
 #' @inherit blob_populate details
 #' @returns a list of `pop` objects; see also [blob_populate()].
@@ -20,9 +23,9 @@
 blob_populate_batch <- function(data,
                                 k,
                                 r = c(0.5,1),
-                                iter = 3,
-                                run,
-                                batch,
+                                iter = 10,
+                                run = 100,
+                                batch = 5,
                                 converge_ari = NULL,
                                 coords = c(1,2),
                                 age = 3,
@@ -38,13 +41,12 @@ blob_populate_batch <- function(data,
                                 w_knn = NULL,
                                 l_normalise = NULL,
                                 beta_par = NULL) {
-  
   # compute space_kmat
   if (is.null(space_kmat)) {
     if (is.null(w_knn)) w_knn <- 7
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
-    
+    #-------------------------------------------------------------------#
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -70,7 +72,7 @@ blob_populate_batch <- function(data,
   } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
-  
+  #-------------------------------------------------------------------#
   # sample r
   if (length(r) == 2) {
     # LHS sampling for more evenly distributed parameters
@@ -80,7 +82,7 @@ blob_populate_batch <- function(data,
   } else {
     r_samples <- rep(r, run)
   }
-  
+  #-------------------------------------------------------------------#
   # assign k's lb and ub when NULL
   N <- nrow(data)
   if (is.null(k)) {
@@ -88,13 +90,13 @@ blob_populate_batch <- function(data,
     k[1] <- 2L # lower bound
     k[2] <- as.integer(floor(sqrt(N))) # upper bound, an heuristic to maximise information e.g. 100 points: 10 blobs, 10 points each 
   }
-  
+  #-------------------------------------------------------------------#
   r_vec <- r_samples
   batch_vec <- 1:batch
-  
+  #-------------------------------------------------------------------#
   if(length(k) == 1) {
     grid <- expand.grid(r_vec = r_vec, batch_vec = batch_vec)
-    
+    #-------------------------------------------------------------------#
     blob_list <- future.apply::future_Map(function(r, batch) {
       list(
         blob = blob_search(data = data,
@@ -114,7 +116,7 @@ blob_populate_batch <- function(data,
         batch = batch
       )
     }, grid$r_vec, grid$batch_vec, future.seed = TRUE)
-    
+    #-------------------------------------------------------------------#
     # group runs of same batch
     batch_list <- vector("list", batch)
     for (i in 1:length(blob_list)) {
@@ -124,13 +126,13 @@ blob_populate_batch <- function(data,
                                 list(blob_list[[i]][["blob"]])
       )
     }
-    
+    #-------------------------------------------------------------------#
     for (i in 1:batch) {
       blob_list <- batch_list[[i]]
       pop <- convert_to_pop(blob_list)
       pop$summary$batch <- i
       pop$trace$batch <- i
-      
+      #-------------------------------------------------------------------#
       pop$summary <- pop$summary[, c("idx",
                                      "batch",
                                      "k", "r", "run",
@@ -140,7 +142,6 @@ blob_populate_batch <- function(data,
                                      "size_mean", "size_sd", "size_diff",
                                      "intersects", "n_removed",
                                      "iter", "ari", "dup")]
-      
       pop$trace <- pop$trace[, c("idx",
                                  "batch",
                                  "k", "r", "run",
@@ -150,17 +151,17 @@ blob_populate_batch <- function(data,
                                  "size_mean", "size_sd", "size_diff",
                                  "intersects",
                                  "iter", "ari")]
-      
+      #-------------------------------------------------------------------#
       pop$space_kmat_optim_out = space_kmat_optim_out
-  
+      #-------------------------------------------------------------------#
+      class(pop) <- "pop"
       batch_list[[i]] <- pop
     }
-    
   } else {
     if (length(k) == 2) {
       k_vec <- k[1]:k[2]
       grid <- expand.grid(k_vec = k_vec, r_vec = r_vec, batch_vec = batch_vec)
-      
+      #-------------------------------------------------------------------#
       blob_list <- future.apply::future_Map(function(k, r, batch) {
         list(
           blob = blob_search(data = data,
@@ -181,7 +182,7 @@ blob_populate_batch <- function(data,
           batch = batch
         )
       }, grid$k_vec, grid$r_vec, grid$batch_vec, future.seed = TRUE)
-      
+      #-------------------------------------------------------------------#
       # group runs of same batch
       batch_list <- vector("list", batch)
       for (i in 1:length(blob_list)) {
@@ -194,7 +195,7 @@ blob_populate_batch <- function(data,
                                   )
         )
       }
-      
+      #-------------------------------------------------------------------#
       # group runs of same k
       for (i in 1:batch) {
         pop_list <- vector("list", k[2])
@@ -205,31 +206,28 @@ blob_populate_batch <- function(data,
         }
         pop_list <- pop_list[-1] # as the loop starts at 2
         pop_list <- lapply(pop_list, convert_to_pop)
-        
+        #-------------------------------------------------------------------#
         # extract each element and add a column to indicate the initial k
         pop <- do.call(rbind, pop_list)
-        
         summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) cbind(pop[ , "summary"][[i]], k_o = i + 1))
         trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) cbind(pop[ , "trace"][[i]], k_o = i + 1)) 
         clust_list <- pop[ ,"clust"]
         n_filtered_list <- pop[ , "n_filtered"]
-        
+        #-------------------------------------------------------------------#
         # redundant to store the whole blob data frame at this step so only clust is kept as output from blobs
         clust <- do.call(rbind, clust_list)
         summary <- do.call(rbind, summary_list)
         trace <- do.call(rbind, trace_list)
         n_filtered <- do.call(rbind, n_filtered_list)
         n_filtered <- cbind(k_o = 2:(nrow(n_filtered) + 1), n_filtered)
-        
+        #-------------------------------------------------------------------#
         # reindex the solutions
         summary$idx <- NULL
         summary$idx <- 1:nrow(summary)
         trace$idx <- NULL
         trace <- merge(trace, summary[, c("idx","k_o","run")], by = c("k_o","run"), all.x = TRUE)
-        
         summary$batch <- i
         trace$batch <- i
-        
         summary <- summary[, c("idx",
                                "batch",
                                "k_o", "k", "r", "run",
@@ -239,7 +237,6 @@ blob_populate_batch <- function(data,
                                "size_mean", "size_sd", "size_diff",
                                "intersects", "n_removed",
                                "iter", "ari", "dup")]
-        
         trace <- trace[, c("idx",
                            "batch",
                            "k_o", "k", "r", "run",
@@ -252,13 +249,13 @@ blob_populate_batch <- function(data,
         
         rownames(summary) <- NULL
         rownames(trace) <- NULL
-        
+        #-------------------------------------------------------------------#
         pop <- list(clust = clust,
                     summary = summary,
                     trace = trace,
                     n_filtered = n_filtered,
                     space_kmat_optim_out = space_kmat_optim_out)
-        
+        class(pop) <- "pop"
         batch_list[[i]] <- pop
       }
     }
@@ -272,15 +269,16 @@ blob_populate_batch <- function(data,
 #' @description
 #' This function combine two pop objects.
 #'
-#' @param pop_a,pop_b a `pop` object; see also [blob_populate()].
+#' @param pop_a,pop_b a `pop`, `pop_pareto` or `pop_moo` object;
+#' see also [blob_populate()], [find_pareto()] and [eval_moo()].
 #'
-#' @inherit a `pop` object; see also [blob_populate()].
+#' @returns a `pop` object.
 #' @export
 
 combine_pop <- function(pop_a, pop_b) {
   # check if any pop is NULL
   if (is.null(pop_a) & is.null(pop_b)) return(NULL)
-  # if pop_a went through find_pareto
+  # if pop_a went through find_pareto()
   if (!is.null(pop_a)) {
     if(!is.null(pop_a$pareto_idx)) {
       pop_a$summary$pareto <- NULL
@@ -289,10 +287,11 @@ combine_pop <- function(pop_a, pop_b) {
       pop_a$trace$pareto_similar <- NULL
       pop_a$pareto_idx <- NULL
       pop_a$obj <- NULL
-      message("Please run find_pareto() on the combined pop output.")
+      message("Pareto optimality has to be re-evaluated.")
     }
   }
-  
+  #-------------------------------------------------------------------#
+  # if pop_b went through find_pareto()
   if (!is.null(pop_b)) {
     if(!is.null(pop_b$pareto_idx)) {
       pop_b$summary$pareto <- NULL
@@ -301,10 +300,10 @@ combine_pop <- function(pop_a, pop_b) {
       pop_b$trace$pareto_similar <- NULL
       pop_b$pareto_idx <- NULL
       pop_b$obj <- NULL
-      message("Please run find_pareto() on the combined pop output.")
+      message("Pareto optimality has to be re-evaluated.")
     }
   }
-  
+  #-------------------------------------------------------------------#
   # if one of the pop is NULL, return the !NULL one
   if (is.null(pop_a)){
     if (is.null(pop_b$summary$batch)) {
@@ -321,7 +320,7 @@ combine_pop <- function(pop_a, pop_b) {
       return(pop_a)
     }
   }
-  
+  #-------------------------------------------------------------------#
   # if both pop is !NULL
   # index the batch
   # check if batch is a column in the output
@@ -329,21 +328,22 @@ combine_pop <- function(pop_a, pop_b) {
     pop_a$summary$batch <- 1
     pop_a$trace$batch <- 1
   }
-  
+  #-------------------------------------------------------------------#
   if (is.null(pop_b$summary$batch)) {
     pop_b$summary$batch <- max(pop_a$summary$batch) + 1
     pop_b$trace$batch <- max(pop_a$trace$batch) + 1
   }
-  
+  #-------------------------------------------------------------------#
   # combine pop
   pop <- Map(rbind, pop_a, pop_b)
-
+  #-------------------------------------------------------------------#
   # reindex summary and trace
   pop$summary$idx <- 1:nrow(pop$summary)
   pop$trace$idx <- NULL # remove column for the new
   if("k_o" %in% names(pop$trace)) {
     pop$trace <- merge(pop$trace, unique(pop$summary[ , c("idx","batch","k_o","run")]), by = c("batch","k_o","run"), all.x = TRUE)
     pop$trace <- pop$trace[, c(length(pop$trace), 1:length(pop$trace)-1)]
+    #-------------------------------------------------------------------#
     # sum the filtered counts by k_o
     pop$n_filtered <- cbind(
       k_o = sort(unique(pop$n_filtered[, 1])),
@@ -353,15 +353,16 @@ combine_pop <- function(pop_a, pop_b) {
   } else {
     pop$trace <- merge(pop$trace, unique(pop$summary[ , c("idx","batch","run")]), by = c("batch","run"), all.x = TRUE)
     pop$trace <- pop$trace[, c(length(pop$trace), 1:length(pop$trace)-1)]
+    #-------------------------------------------------------------------#
     # sum the filtered counts
     pop$n_filtered <- rowsum(x = pop$n_filtered, group = rep(1, nrow(pop$n_filtered))) # colSums can does the same but just want to keep it as a data frame without additional functions.
   }
-  
+  #-------------------------------------------------------------------#
   # find and filter exact duplicates
   if (!is.null(pop$clust)) {
     if (nrow(pop$clust) > 1) {
       dup <- find_dup(pop$clust, ari = 1)
-
+      #-------------------------------------------------------------------#
       if (length(dup$idx) > 0) {
         # record the duplicate freq
         pop$summary$dup[as.numeric(names(dup$freq))] <- pop$summary$dup[as.numeric(names(dup$freq))] + as.vector(dup$freq)
@@ -369,7 +370,7 @@ combine_pop <- function(pop_a, pop_b) {
         pop$clust <- pop$clust[-dup$idx, , drop = F]
         pop$summary <- pop$summary[-dup$idx, ]
         pop$trace <- subset(pop$trace, !idx %in% dup$idx)
-        
+        #-------------------------------------------------------------------#
         # append the dup count
         if ("k_o" %in% names(pop$n_filtered)) {
           # extract from summary
@@ -382,7 +383,7 @@ combine_pop <- function(pop_a, pop_b) {
         } else {
           pop$n_filtered$dup <- pop$n_filtered$dup + length(dup$idx)
         }
-        
+        #-------------------------------------------------------------------#
         # reindex the solution
         pop$summary$idx <- 1:nrow(pop$summary)
         pop$trace$idx <- NULL # remove column for the new
@@ -396,10 +397,11 @@ combine_pop <- function(pop_a, pop_b) {
       }
     }
   }
-  
+  #-------------------------------------------------------------------#
   rownames(pop$summary) <- NULL
   rownames(pop$trace) <- NULL
-  
+  #-------------------------------------------------------------------#
+  class(pop) <- "pop"
   return(pop)
 }
 
@@ -452,6 +454,7 @@ parse_obj <- function(obj) {
 find_pareto <- function(pop, obj = NULL) {
   if (is.null(obj)) obj <- pop$obj
   if (is.null(obj)) stop("Missing obj!")
+  #-------------------------------------------------------------------#
   # parse obj
   obj_input <- obj
   parse_obj_out <- parse_obj(obj)
@@ -459,17 +462,17 @@ find_pareto <- function(pop, obj = NULL) {
   obj <- parse_obj_out$obj
   # subset objspace from summary
   objspace <- pop$summary[ , obj]
-  
+  #-------------------------------------------------------------------#
   # multiply obj to be maximised by -1
   if (length(maximise_obj_idx) > 0) {
     for(j in maximise_obj_idx) {
       objspace[[ obj[j] ]] <- -objspace[[ obj[j] ]]
     }
   }
-  
+  #-------------------------------------------------------------------#
   # extract the idx of Pareto optimal solutions
   pareto_idx <- which(moocore::is_nondominated(objspace) == TRUE)
-  
+  #-------------------------------------------------------------------#
   # update pop
   # create a column in summary to indicate Pareto front solutions
   pop$summary$pareto <- NULL
@@ -477,10 +480,14 @@ find_pareto <- function(pop, obj = NULL) {
   pop$summary$pareto[pareto_idx] <- 1
   pop$trace$pareto <- NULL
   pop$trace <- merge(pop$trace, pop$summary[,c("idx","pareto")], by = "idx", all.x = TRUE)
+  #-------------------------------------------------------------------#
   # output orignal idx for id in the summary table
   pop$pareto_idx <- pareto_idx
   pop$obj <- obj_input
-  return(pop)
+  #-------------------------------------------------------------------#
+  pop_pareto <- pop
+  class(pop_pareto) <- "pop_pareto"
+  return(pop_pareto)
 }
 
 #------------------------------------------------------------------------------#
@@ -490,6 +497,7 @@ find_pareto <- function(pop, obj = NULL) {
 #' This function evaluates multi-objective optimisation (MOO) performance.
 #' 
 #' @param batch_list a list of `pop` objects from different batches; see also [blob_populate_batch()].
+#' @inheritParams find_pareto
 #'
 #' @details
 #' The quality indicators include IGD, IGD+ and hypervolume commonly used in MOO,
@@ -504,12 +512,18 @@ find_pareto <- function(pop, obj = NULL) {
 #' See [moocore::moocore] for more information.
 #'
 #' @seealso [combine_pop()], [find_pareto()], [moocore::moocore]
-#' @returns a list of the following objects.
+#' @returns a `pop_pareto` object includes a list of the following objects.
 #' \itemize{
-#'   \item \code{pop}: a `pop_pareto` object from all the batches combined; see also [find_pareto()].
+#'   \item \code{clust}: a numeric matrix of cluster assignments. Each row is a Pareto optimal solution.
+#'   \item \code{summary}: a data frame of summary statistics of all feasible solutions.
+#'   \item \code{trace}: a data frame of summary statistics for tracing of all feasible solutions.
+#'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+#'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} in [distmat_to_kmat()] when `space_kmat` is not supplied.
+#'   \item \code{pareto_idx}: a numeric vector of indices of Pareto optimal cluster assignment.
+#'   \item \code{obj}: a string vector of objectives.
 #'   \item \code{moo_quality}: a data frame of MOO quality indicators.
 #' }
-#' @returns 
+#'
 #' @export
 
 eval_moo <- function(batch_list, obj) {
@@ -519,7 +533,7 @@ eval_moo <- function(batch_list, obj) {
   maximise_obj_idx <- parse_obj_out$maximise_obj_idx
   obj <- parse_obj_out$obj
   n_obj <- length(obj)
-  
+  #-------------------------------------------------------------------#
   # get a list of Pareto optimal objspaces for the accumulated batches
   N <- length(batch_list)
   pareto_objspace_list <- list()
@@ -528,8 +542,8 @@ eval_moo <- function(batch_list, obj) {
     if(i > 1) { pop <- suppressMessages(combine_pop(pop, batch_list[[i]])) } else {
       pop <- batch_list[[i]]
     }
-    pop <- find_pareto(pop, obj = obj_input)
-    pareto_summary <- subset(pop$summary, pareto == 1)
+    pop_pareto <- find_pareto(pop, obj = obj_input)
+    pareto_summary <- subset(pop_pareto$summary, pareto == 1)
     pareto_objspace <- pareto_summary[, obj]
     # inverse the max obj
     if (length(maximise_obj_idx) > 0) {
@@ -539,14 +553,14 @@ eval_moo <- function(batch_list, obj) {
     }
     pareto_objspace_list[[i]] <- pareto_objspace
   }
-  
+  #-------------------------------------------------------------------#
   # obtain upper and lower bounds from the total Pareto front
   ub <- vapply(1:n_obj, function(i) max(pareto_objspace[[obj[i]]]), numeric(1))
   lb <- vapply(1:n_obj, function(i) min(pareto_objspace[[obj[i]]]), numeric(1))
-  
+  #-------------------------------------------------------------------#
   # normalise the objectives
   pareto_objspace_list <- lapply(pareto_objspace_list, function(x) moocore::normalise(x, to_range = c(0,1), lower = lb, upper = ub))
-  
+  #-------------------------------------------------------------------#
   # compute IGD, IGD plus and HV
   igd <- vapply(1:(N - 1),
                 function(i)
@@ -565,10 +579,12 @@ eval_moo <- function(batch_list, obj) {
   
   igd <- append(NA, igd)
   igd_plus <- append(NA, igd_plus)
-  
+  #-------------------------------------------------------------------#
   moo_quality <- data.frame(igd = igd, igd_plus = igd_plus, hv = hv)
-  
-  return(list(pop = pop, moo_quality = moo_quality))
+  pop_pareto$moo_quality <- moo_quality
+  pop_moo <- pop_pareto
+  class(pop_moo) <- "pop_moo"
+  return(pop_moo)
 }
 
 #------------------------------------------------------------------------------#
@@ -579,14 +595,15 @@ eval_moo <- function(batch_list, obj) {
 #'
 #' @inheritParams find_pareto
 #' @inheritParams find_dup
-#' @param pop a `pop_pareto` object; see also [find_pareto()].
+#' @param pop a `pop_pareto` or `pop_moo` object; see also [find_pareto()] and [eval_moo()].
 #' 
 #' @details
 #' The designation of a similar (redundant) solution is dependent on the order of objectives.
 #' Objectives should be ranked in descending order based on their priority.
 #' 
-#' @inherit find_pareto returns
+#' @returns a `pop_pareto` or `pop_moo` object depending on the input.
 #' @seealso [find_dup()]
+#'
 #' @export
 
 find_pareto_similar <- function(pop, ari) {
@@ -620,7 +637,6 @@ find_pareto_similar <- function(pop, ari) {
       text = paste0("pareto_objspace[order(", paste0(paste0("pareto_objspace$", obj), collapse = ","), "), ]$idx")
     ) 
   )
-  
   ordered_clust <- pareto_clust[ordered_idx, ]
   #-------------------------------------------------------------------#
   similar <- find_dup(clust = ordered_clust, ari = ari)
@@ -658,6 +674,9 @@ find_pareto_similar <- function(pop, ari) {
 #' @inheritParams blob_populate
 #' @inheritParams blob_populate_batch
 #' @inheritParams find_pareto
+#' @param k an integer value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the number of clusters.
+#' @param r a numeric value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the relative spatial weight.
+#' They must be \eqn{[0,1]}. Default is c(0.5,1).
 #' @param pareto_similar_ari a numeric value of Adjusted Rand Index (ARI) that
 #' sets similarity threshold between two Pareto optimal solutions.
 #' It must be \eqn{[0,1]}. Default is NULL.
@@ -665,9 +684,10 @@ find_pareto_similar <- function(pop, ari) {
 #' @details
 #' This function is a wrapper of [blob_populate_batch()], [find_pareto()], [eval_moo()] and [find_pareto_similar()].
 #' 
-#' @inherit append_moo_out returns
+#' @inherit eval_moo return
 #'
-#' @seealso [distmat_to_kmat()], [blob_populate_batch()], [find_pareto()], [eval_moo()], [find_pareto_similar()],
+#' @seealso [distmat_to_kmat()], [blob_populate_batch()],
+#' [find_pareto()], [eval_moo()], [find_pareto_similar()],
 #' [sf::st_as_sf()], [lhs::randomLHS()], [mclust::adjustedRandIndex()],
 #' [future::future], [future.apply::future.apply],
 #' [moocore::is_nondominated()]
@@ -677,8 +697,8 @@ find_pareto_similar <- function(pop, ari) {
 blob_moo <- function (data,
                       k,
                       r = c(0.5,1),
-                      iter = 3,
-                      run = 20,
+                      iter = 10,
+                      run = 100,
                       batch = 5,
                       converge_ari = NULL,
                       coords = c(1,2),
@@ -698,7 +718,6 @@ blob_moo <- function (data,
                       pareto_similar_ari = NULL,
                       obj = c("space_wcss","-time_range_mean","-time_evenness_mean","n_removed")) {
                       
-
   # compute space_kmat
   if (is.null(space_kmat)) {
     if (is.null(w_knn)) w_knn <- 7
@@ -730,8 +749,6 @@ blob_moo <- function (data,
   } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
-
-  #-------------------------------------------------------------------#
   #-------------------------------------------------------------------#
   # run batches of blob_populate() using blob_populate_batch()
   batch_list <- blob_populate_batch(data = data,
@@ -751,26 +768,19 @@ blob_moo <- function (data,
                                     max_na = max_na,
                                     space_kmat = space_kmat)
   #-------------------------------------------------------------------#
+  # evaluate MOO
+  pop_moo <- eval_moo(batch_list = batch_list, obj = obj)
   #-------------------------------------------------------------------#
-  moo_out <- eval_moo(batch_list = batch_list, obj = obj)
-  pop <- moo_out$pop
-  moo_quality <- moo_out$moo_quality
-  
-  #-------------------------------------------------------------------#
-  #-------------------------------------------------------------------#
-  # If there are feasible solutions, there must be optimal solutions in the set.
-  if (is.null(pop$pareto_idx)) {
-    message("No assignment is found.")
+  # if there are feasible solutions, there must be optimal solutions in the set.
+  if (is.null(pop_moo$pareto_idx)) {
+    message("No assignment was found.")
     return(NULL)
   }
-  
-  #-------------------------------------------------------------------#
   #-------------------------------------------------------------------#
   # flag similar solutions on the Pareto front
   if (!is.null(pareto_similar_ari)) {
-    pop <- find_pareto_similar(pop = pop, ari = pareto_similar_ari)
+    pop_moo <- find_pareto_similar(pop = pop_moo, ari = pareto_similar_ari)
   }
   #-------------------------------------------------------------------#
-  #-------------------------------------------------------------------#
-  return(pop)
+  return(pop_moo)
 }
