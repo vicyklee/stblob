@@ -4,13 +4,15 @@
 #' Distance matrix computation
 #' 
 #' @description
-#' This function computes and returns the distance matrix computed using the specified method
-#' to compute the distances between the rows of a data matrix. Km is the unit when "geodesic" is specified.
+#' This function computes and returns a distance matrix.
 #'
 #' @param data a numeric matrix or data frame.
 #' @param method a string of method. It must be one of "geodesic" or "euclidean". Default is "geodesic".
 #'
-#' @returns a numeric distance matrix. km is the unit when "geodesic" is specified.
+#' @details
+#' km is the unit when "geodesic" is specified.
+#'
+#' @returns a numeric distance matrix.
 #'
 #' @export
 
@@ -31,14 +33,13 @@ compute_distmat <- function(data, method = "geodesic") {
 #' Compute adjacency matrix using local scaling
 #' 
 #' @description
-#' This function converts a distance matrix to a weighted adjacency matrix using local scaling
-#' proposed by Zelnik-Manor and Perona (2004).
+#' This function converts a distance matrix to a weighted adjacency matrix with local scaling.
 #'
 #' @param distmat a distance matrix.
 #' @param knn an integer of the k-th nearest neighbour. Default is 7.
 #' 
 #' @details
-#' The method used to compute a weighted adjacency matrix was proposed by Zelnik-Manor and Perona (2004). 
+#' The local-scaling method follows Zelnik-Manor and Perona (2004). 
 #' Instead of using a fixed scaling parameter for all data points, a local scaling parameter is calculated for
 #' every point based on their \eqn{k^th} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
 #' See Zelnik-Manor and Perona (2004) for more information.
@@ -123,7 +124,7 @@ diffusion_kernel <- function(L, beta) {
 #' @param sigma a numeric vector of singular values.
 #' 
 #' @details
-#' Instead of treating \eqn{0\log{0} = 0} in Roy and Vetterli (2007), 100000000 is returned when any \eqn{\sigma_i = 0}
+#' Instead of treating \eqn{0\log{0} = 0} in Roy and Vetterli (2007), 1e8 is returned when any \eqn{\sigma_i = 0}
 #' due to its application in the optimisation of \eqn{\beta} for diffusion kernel k-means clustering.
 #' It avoids \eqn{\beta} that gives eigenvalues of 0 in the computation of the diffusion kernel. 
 #'
@@ -382,7 +383,7 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL) {
 #' Intersect check 
 #' 
 #' @description
-#' This function checks and returns a Boolean if any clusters are intersecting.
+#' This function checks and returns a Boolean if any clusters intersect.
 #'
 #' @param data a numeric matrix or data frame.
 #' @param clust a numeric vector of cluster assignment. Default is NULL when it is already present as a column in the data.
@@ -464,7 +465,7 @@ reorder_clust <- function(clust) {
 #' Clustering evaluation
 #' 
 #' @description
-#' This function evaluates clustering performance and returns a summary and clusters that are below the critical size.
+#' This function evaluates clustering performance.
 #'
 #' @inheritParams intersects_bool
 #' @inheritParams compute_spacecost
@@ -596,7 +597,7 @@ eval_blobs <- function(data,
 #' Assign the starting cluster members
 #' 
 #' @description
-#' Assign the starting cluster members by approximating the maximum spatial separation between points or by random assignment.
+#' This function assigns the starting cluster members by approximating the maximum spatial separation between points or by random assignment.
 #'
 #' @param data a data matrix or data frame.
 #' @param k an integer of the number of clusters.
@@ -781,7 +782,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' Core local-search algorithm
 #' 
 #' @description
-#' This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in an iterative fashion.
+#' This function performs an iterative bi-objective optimisation algorithm to assign clusters for a given k and r.
 #' 
 #' @inheritParams start_blobs
 #' @inheritParams find_blobs
@@ -816,7 +817,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} in [distmat_to_kmat()] when `space_kmat` is not supplied.
 #' }
 #'
-#' @seealso [distmat_to_kmat()] and [sf::st_as_sf()]
+#' @seealso [distmat_to_kmat()], [sf::st_as_sf()]
 #'
 #' @export
 
@@ -1188,7 +1189,8 @@ convert_to_pop <- function(blob_list) {
 #' Populate solutions by weighted sum scalarisation
 #' 
 #' @description
-#' This function populates solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' This function populates solutions by weighted sum scalarisation of the bi-objective
+#' search algorithm in [blob_search()] for a given k. 
 #' 
 #' @inheritParams start_blobs
 #' @inheritParams find_blobs
@@ -1199,7 +1201,7 @@ convert_to_pop <- function(blob_list) {
 #' @param run an integer of the number of runs. Default is 100.
 #' 
 #' @details
-#' A diffusion kernel is applied to compute the distance to the centroid in space.]
+#' A diffusion kernel is applied to compute the distance to the centroid in space.
 #' See [distmat_to_kmat()] for more details for converting a distance matrix to a kernel matrix.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
