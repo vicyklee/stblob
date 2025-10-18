@@ -15,7 +15,7 @@
 
 gen_circle_coords <- function(radius, n) {
   # Generate angles for each vertex
-  angles <- seq(0, 2 * pi, length.out = n + 1)[-1]  # Exclude the last angle (2*pi)
+  angles <- seq(0, 2 * pi, length.out = n + 1)[-(n + 1)]  # Exclude the last angle (2*pi)
   
   # Calculate x and y coordinates
   x_coords <- radius * sin(angles)
