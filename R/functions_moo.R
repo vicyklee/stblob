@@ -4,7 +4,8 @@
 #' Populate solutions by weighted sum scalarisation for multiple batches
 #' 
 #' @description
-#' This function populates solutions by weighted sum scalarisation of the bi-objective function in [blob_search()] for a given k. 
+#' This function populates solutions by weighted sum scalarisation of the bi-objective
+#' search algorithm in [blob_search()] for a given k for multiple batches. 
 #' 
 #' @inheritParams start_blobs
 #' @inheritParams find_blobs
@@ -267,7 +268,7 @@ blob_populate_batch <- function(data,
 #' Combine pop objects
 #' 
 #' @description
-#' This function combine two pop objects.
+#' This function combines two `pop` objects.
 #'
 #' @param pop_a,pop_b a `pop`, `pop_pareto` or `pop_moo` object;
 #' see also [blob_populate()], [find_pareto()] and [eval_moo()].
