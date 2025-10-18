@@ -18,8 +18,8 @@ gen_circle_coords <- function(radius, n) {
   angles <- seq(0, 2 * pi, length.out = n + 1)[-1]  # Exclude the last angle (2*pi)
   
   # Calculate x and y coordinates
-  x_coords <- radius * cos(angles)
-  y_coords <- radius * sin(angles)
+  x_coords <- radius * sin(angles)
+  y_coords <- radius * cos(angles)
   
   # Combine coordinates into a data frame
   coords <- as.matrix(data.frame(x = x_coords, y = y_coords))
