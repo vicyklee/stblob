@@ -256,7 +256,7 @@ plot_time <- function (data, clust, age = 3) {
                    axis.title.y = ggplot2::element_blank()) +
     ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
     ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
-    ggplot2::scale_y_discrete(expand = ggplot2::expand_scale(mult = c(0,0), add = c(0.2,0.6)))
+    ggplot2::scale_y_discrete(expand = ggplot2::expansion(mult = c(0,0), add = c(0.2,0.6)))
   return(p)
 }
 
