@@ -1,6 +1,31 @@
-#' "Jain" dataset
+#' Demo data A
 #'
-#' @format ## `jain`
+#' @format
+#' A data frame with 300 rows and 4 columns:
+#' \describe{
+#'   \item{x, y}{Spatial coordinates of the original dataset}
+#'   \item{age}{Randomly sampled age}
+#'   \item{clust}{True spatial cluster}
+#' }
+#' @source This package
+"threeblobs_a"
+
+#' Demo data B
+#'
+#' @format
+#' A data frame with 300 rows and 4 columns:
+#' \describe{
+#'   \item{x, y}{Spatial coordinates of the original dataset}
+#'   \item{age}{Randomly sampled age}
+#'   \item{clust}{True spatial cluster}
+#' }
+#' @source This package
+"threeblobs_b"
+
+
+#' "Jain" data
+#'
+#' @format
 #' A data frame with 373 rows and 4 columns:
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
@@ -14,9 +39,9 @@
 #' Fränti, P., & Sieranoja, S. (2018). K-means properties on six clustering benchmark datasets. Applied intelligence, 48(12), 4743-4759.
 "jain"
 
-#' "Asymmetric" dataset
+#' "Asymmetric" data
 #'
-#' @format ## `asymmetric`
+#' @format
 #' A data frame with 1000 rows and 4 columns:
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
@@ -30,9 +55,9 @@
 #' Rezaei, M., & Fränti, P. (2020). Can the number of clusters be determined by external indices?. IEEE Access, 8, 89239-89257.
 "asymmetric"
 
-#' "Aggregation" dataset
+#' "Aggregation" data
 #'
-#' @format ## `aggregation`
+#' @format
 #' A data frame with 788 rows and 4 columns:
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
@@ -46,10 +71,9 @@
 #' Rezaei, M., & Fränti, P. (2020). Can the number of clusters be determined by external indices?. IEEE Access, 8, 89239-89257.
 "aggregation"
 
-
-#' "Noisycircles" dataset
+#' "Noisycircles" data
 #'
-#' @format ## `noisycircles`
+#' @format
 #' A data frame with 1000 rows and 4 columns:
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
