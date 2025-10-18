@@ -103,10 +103,10 @@ pivot_trace <- function (df) {
 }
 
 #------------------------------------------------------------------------------#
-#' Plot trace summary
+#' Plot trace
 #' 
 #' @description
-#' This function plots 2D objective space.
+#' This function plots the trace.
 #' @inheritParams plot_objspace
 #' @param colour a string of the attribute to be coloured. It must be either "r", "batch" or "k_o".
 #' @return a ggplot.
