@@ -27,5 +27,5 @@ intersects_bool(
 TRUE or FALSE
 }
 \description{
-This function checks and returns a Boolean if any clusters are intersecting.
+This function checks and returns a Boolean if any clusters intersect.
 }

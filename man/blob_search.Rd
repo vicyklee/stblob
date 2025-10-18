@@ -79,7 +79,7 @@ or a list of the following objects if the search is meets the constraints,
 }
 }
 \description{
-This function performs the core bi-objective optimisation algorithm to assign clusters for a given k and r in an iterative fashion.
+This function performs an iterative bi-objective optimisation algorithm to assign clusters for a given k and r.
 }
 \details{
 A diffusion kernel is applied to compute the distance to the centroid in space.]
@@ -93,5 +93,5 @@ above the specified threshold and at least three iterations are run.
 The critical size of a cluster is defined as \eqn{\frac{N}{2k}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
 }
 \seealso{
-\code{\link[=distmat_to_kmat]{distmat_to_kmat()}} and \code{\link[sf:st_as_sf]{sf::st_as_sf()}}
+\code{\link[=distmat_to_kmat]{distmat_to_kmat()}}, \code{\link[sf:st_as_sf]{sf::st_as_sf()}}
 }

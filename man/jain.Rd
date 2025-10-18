@@ -3,16 +3,13 @@
 \docType{data}
 \name{jain}
 \alias{jain}
-\title{"Jain" dataset}
+\title{"Jain" data}
 \format{
-\subsection{\code{jain}}{
-
 A data frame with 373 rows and 4 columns:
 \describe{
 \item{x, y}{Spatial coordinates of the original dataset}
 \item{age}{Randomly sampled age}
 \item{clust}{True spatial cluster}
-}
 }
 }
 \source{
@@ -22,7 +19,7 @@ A data frame with 373 rows and 4 columns:
 jain
 }
 \description{
-"Jain" dataset
+"Jain" data
 }
 \references{
 Jain, A. K., & Law, M. H. (2005, December). Data clustering: A user’s dilemma. In International conference on pattern recognition and machine intelligence (pp. 1-10). Berlin, Heidelberg: Springer Berlin Heidelberg.

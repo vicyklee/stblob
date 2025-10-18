@@ -19,5 +19,5 @@ start_blobs(data, k, space_kmat, random_start = FALSE)
 a data frame with assigned starting clusters as a column.
 }
 \description{
-Assign the starting cluster members by approximating the maximum spatial separation between points or by random assignment.
+This function assigns the starting cluster members by approximating the maximum spatial separation between points or by random assignment.
 }

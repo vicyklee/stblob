@@ -12,9 +12,11 @@ compute_distmat(data, method = "geodesic")
 \item{method}{a string of method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
 }
 \value{
-a numeric distance matrix. km is the unit when "geodesic" is specified.
+a numeric distance matrix.
 }
 \description{
-This function computes and returns the distance matrix computed using the specified method
-to compute the distances between the rows of a data matrix. Km is the unit when "geodesic" is specified.
+This function computes and returns a distance matrix.
+}
+\details{
+km is the unit when "geodesic" is specified.
 }

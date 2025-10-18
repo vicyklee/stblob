@@ -16,7 +16,7 @@ a numeric value of the effective rank.
 This function computes and returns the effective rank from singular values of a matrix following Roy and Vetterli (2007).
 }
 \details{
-Instead of treating \eqn{0\log{0} = 0} in Roy and Vetterli (2007), 100000000 is returned when any \eqn{\sigma_i = 0}
+Instead of treating \eqn{0\log{0} = 0} in Roy and Vetterli (2007), 1e8 is returned when any \eqn{\sigma_i = 0}
 due to its application in the optimisation of \eqn{\beta} for diffusion kernel k-means clustering.
 It avoids \eqn{\beta} that gives eigenvalues of 0 in the computation of the diffusion kernel.
 }

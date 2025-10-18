@@ -80,10 +80,11 @@ a \code{pop} object includes a list of the following objects.
 }
 }
 \description{
-This function populates solutions by weighted sum scalarisation of the bi-objective function in \code{\link[=blob_search]{blob_search()}} for a given k.
+This function populates solutions by weighted sum scalarisation of the bi-objective
+search algorithm in \code{\link[=blob_search]{blob_search()}} for a given k.
 }
 \details{
-A diffusion kernel is applied to compute the distance to the centroid in space.]
+A diffusion kernel is applied to compute the distance to the centroid in space.
 See \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} for more details for converting a distance matrix to a kernel matrix.
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.

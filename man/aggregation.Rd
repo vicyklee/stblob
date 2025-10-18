@@ -3,16 +3,13 @@
 \docType{data}
 \name{aggregation}
 \alias{aggregation}
-\title{"Aggregation" dataset}
+\title{"Aggregation" data}
 \format{
-\subsection{\code{aggregation}}{
-
 A data frame with 788 rows and 4 columns:
 \describe{
 \item{x, y}{Spatial coordinates of the original dataset}
 \item{age}{Randomly sampled age}
 \item{clust}{True spatial cluster}
-}
 }
 }
 \source{
@@ -22,7 +19,7 @@ A data frame with 788 rows and 4 columns:
 aggregation
 }
 \description{
-"Aggregation" dataset
+"Aggregation" data
 }
 \references{
 Gionis, A., Mannila, H., & Tsaparas, P. (2007). Clustering aggregation. Acm transactions on knowledge discovery from data (tkdd), 1(1), 4-es.

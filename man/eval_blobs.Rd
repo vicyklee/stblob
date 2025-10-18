@@ -50,7 +50,7 @@ a list of the following objects.
 }
 }
 \description{
-This function evaluates clustering performance and returns a summary and clusters that are below the critical size.
+This function evaluates clustering performance.
 }
 \details{
 The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data points and \eqn{k} is the number of clusters.

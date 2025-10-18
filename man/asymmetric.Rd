@@ -3,16 +3,13 @@
 \docType{data}
 \name{asymmetric}
 \alias{asymmetric}
-\title{"Asymmetric" dataset}
+\title{"Asymmetric" data}
 \format{
-\subsection{\code{asymmetric}}{
-
 A data frame with 1000 rows and 4 columns:
 \describe{
 \item{x, y}{Spatial coordinates of the original dataset}
 \item{age}{Randomly sampled age}
 \item{clust}{True spatial cluster}
-}
 }
 }
 \source{
@@ -22,7 +19,7 @@ A data frame with 1000 rows and 4 columns:
 asymmetric
 }
 \description{
-"Asymmetric" dataset
+"Asymmetric" data
 }
 \references{
 Fränti, P., & Sieranoja, S. (2018). K-means properties on six clustering benchmark datasets. Applied intelligence, 48(12), 4743-4759.

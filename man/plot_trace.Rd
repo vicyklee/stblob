@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions_plotting.R
 \name{plot_trace}
 \alias{plot_trace}
-\title{Plot trace summary}
+\title{Plot trace}
 \usage{
 plot_trace(pop, colour = c("r", "batch", "k_o"), alpha = 0.8)
 }
@@ -17,7 +17,7 @@ plot_trace(pop, colour = c("r", "batch", "k_o"), alpha = 0.8)
 a ggplot.
 }
 \description{
-This function plots 2D objective space.
+This function plots the trace.
 }
 \seealso{
 \code{\link[ggplot2:scale_manual]{ggplot2::scale_colour_manual()}}, \code{\link[MetBrewer:met.brewer]{MetBrewer::met.brewer()}}
