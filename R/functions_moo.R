@@ -683,8 +683,8 @@ find_pareto_similar <- function(pop, ari) {
 #' @param k an integer value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the number of clusters.
 #' @param r a numeric value or vector of length 2. If a vector is supplied, they specify the lower and upper bounds of the relative spatial weight.
 #' They must be \eqn{[0,1]}. Default is c(0.5,1).
-#' @param pareto_similar_ari a numeric value of Adjusted Rand Index (ARI) that
-#' sets similarity threshold between two Pareto optimal solutions.
+#' @param pareto_similar_ari a numeric value of the Adjusted Rand Index (ARI) that
+#' sets the similarity threshold between two Pareto optimal solutions.
 #' It must be \eqn{[0,1]}. Default is NULL.
 #'
 #' @details

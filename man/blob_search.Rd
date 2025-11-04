@@ -72,9 +72,9 @@ a numeric value of 1 if the search result is removed due to the presence of inte
 or a list of the following objects if the search is meets the constraints,
 \itemize{
 \item \code{data}: a data frame of the input data with assigned clusters as a column.
-\item \code{summary}: a data frame of summary statistics.
+\item \code{summary}: a data frame of the summary statistics.
 \item \code{clust_below_size}: a numeric vector of clusters below the critical size.
-\item \code{trace}: a data frame of summary statistics for tracing.
+\item \code{trace}: a data frame of the summary statistics per iteration.
 \item \code{space_kmat_optim_out}: an output of \code{\link[stats:optim]{stats::optim()}} from the optimisation of \eqn{\beta} in \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} when \code{space_kmat} is not supplied.
 }
 }

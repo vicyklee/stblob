@@ -163,7 +163,7 @@ compute_erank_sigma <- function(sigma) {
 #' Instead of treating \eqn{0\log{0} = 0}
 #' when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 #' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-#' to constrain \eqn{\sigma_i = 0} > 0.
+#' to constrain \eqn{\sigma_i > 0}.
 #'
 #' @returns a numeric value of the effective rank.
 #' @references 
@@ -205,7 +205,7 @@ compute_erank <- function(L, beta) {
 #' Instead of treating \eqn{0\log{0} = 0}
 #' when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 #' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-#' to constrain \eqn{\sigma_i = 0} > 0.
+#' to constrain \eqn{\sigma_i > 0}.
 #' 
 #' @returns a numeric value of the difference in effective ranks.
 #' @references 
@@ -279,7 +279,7 @@ optim_beta <- function(L, k, par = 10) {
 #' 
 #' @param distmat a distance matrix.
 #' @param k an integer of the number of clusters.
-#' @param w_knn an integer of the \eqn{k^{th}} nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7.
+#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7.
 #' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
 #' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
@@ -805,9 +805,9 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' or a list of the following objects if the search is meets the constraints,
 #' \itemize{
 #'   \item \code{data}: a data frame of the input data with assigned clusters as a column.
-#'   \item \code{summary}: a data frame of summary statistics.
+#'   \item \code{summary}: a data frame of the summary statistics.
 #'   \item \code{clust_below_size}: a numeric vector of clusters below the critical size.
-#'   \item \code{trace}: a data frame of summary statistics for tracing.
+#'   \item \code{trace}: a data frame of the summary statistics per iteration.
 #'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} in [distmat_to_kmat()] when `space_kmat` is not supplied.
 #' }
 #'
@@ -1209,7 +1209,7 @@ convert_to_pop <- function(blob_list) {
 #' 
 #' To parallelise runs, [future.apply::future_lapply()] is implemented. See [future::future] and [future.apply::future.apply] for more information.
 #' 
-#' `k` is set to \eqn{[2, \lfloor\sqrt{N}\rfloor]} when NULL.
+#' `k` is set to \eqn{[2, \lfloor\sqrt{n}\rfloor]} when NULL.
 #' 
 #' @returns a `pop` object includes a list of the following objects.
 #' \itemize{

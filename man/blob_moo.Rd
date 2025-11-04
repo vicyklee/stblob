@@ -74,8 +74,8 @@ They must be \eqn{[0,1]}. Default is c(0.5,1).}
 
 \item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with \code{\link[=optim_beta]{optim_beta()}} when \code{space_kmat} is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.}
 
-\item{pareto_similar_ari}{a numeric value of Adjusted Rand Index (ARI) that
-sets similarity threshold between two Pareto optimal solutions.
+\item{pareto_similar_ari}{a numeric value of the Adjusted Rand Index (ARI) that
+sets the similarity threshold between two Pareto optimal solutions.
 It must be \eqn{[0,1]}. Default is NULL.}
 
 \item{obj}{a string vector of objectives. "-" prefix to indicate objectives to be maximised.}

@@ -30,7 +30,7 @@ this loss function is defined as the absolute difference between the effective r
 Instead of treating \eqn{0\log{0} = 0}
 when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-to constrain \eqn{\sigma_i = 0} > 0.
+to constrain \eqn{\sigma_i > 0}.
 }
 \references{
 Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
