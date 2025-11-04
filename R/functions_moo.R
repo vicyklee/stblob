@@ -505,10 +505,10 @@ find_pareto <- function(pop, obj = NULL) {
 #' computed using [moocore::igd()], [moocore::igd_plus()], and [moocore::hypervolume()].
 #' 
 #' The reference for IGD and IGD+ use the Pareto optimal solutions of all batches combined and
-#' the reference point for hypervolume uses \eqn{(x_1, x_2, ..., x_n)},
-#' where n is the number of objectives and \eqn{x_i = 1} for all \eqn{i}.
+#' the reference point for hypervolume uses \eqn{(r_1, r_2, ..., r_m)},
+#' where m is the number of objectives and \eqn{r_i = 1} for all \eqn{i}.
 #' 
-#' The lower and upper bounds for normalisation are obtained from the Pareto front considering all batches combined.
+#' The lower and upper bounds for normalisation are obtained from all the solutions.
 #' 
 #' See [moocore::moocore] for more information.
 #'
@@ -537,27 +537,32 @@ eval_moo <- function(batch_list, obj) {
   #-------------------------------------------------------------------#
   # get a list of Pareto optimal objspaces for the accumulated batches
   N <- length(batch_list)
+  
   pareto_objspace_list <- list()
   for (i in 1:N) {
-    # problem!
     if(i > 1) { pop <- suppressMessages(combine_pop(pop, batch_list[[i]])) } else {
       pop <- batch_list[[i]]
     }
     pop_pareto <- find_pareto(pop, obj = obj_input)
     pareto_summary <- subset(pop_pareto$summary, pareto == 1)
+    # objspace for normalisation
+    summary <- pop$summary
     pareto_objspace <- pareto_summary[, obj]
+    objspace <- summary[, obj]
     # inverse the max obj
     if (length(maximise_obj_idx) > 0) {
       for(j in maximise_obj_idx) {
         pareto_objspace[[ obj[j] ]] <- -pareto_objspace[[ obj[j] ]]
+        objspace[[ obj[j] ]] <- -objspace[[ obj[j] ]]
       }
     }
     pareto_objspace_list[[i]] <- pareto_objspace
   }
+  
   #-------------------------------------------------------------------#
-  # obtain upper and lower bounds from the total Pareto front
-  ub <- vapply(1:n_obj, function(i) max(pareto_objspace[[obj[i]]]), numeric(1))
-  lb <- vapply(1:n_obj, function(i) min(pareto_objspace[[obj[i]]]), numeric(1))
+  # obtain upper and lower bounds from the all the solution
+  ub <- vapply(1:n_obj, function(i) max(objspace[[obj[i]]]), numeric(1))
+  lb <- vapply(1:n_obj, function(i) min(objspace[[obj[i]]]), numeric(1))
   #-------------------------------------------------------------------#
   # normalise the objectives
   pareto_objspace_list <- lapply(pareto_objspace_list, function(x) moocore::normalise(x, to_range = c(0,1), lower = lb, upper = ub))

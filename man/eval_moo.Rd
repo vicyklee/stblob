@@ -32,10 +32,10 @@ The quality indicators include IGD, IGD+ and hypervolume commonly used in MOO,
 computed using \code{\link[moocore:igd]{moocore::igd()}}, \code{\link[moocore:igd]{moocore::igd_plus()}}, and \code{\link[moocore:hypervolume]{moocore::hypervolume()}}.
 
 The reference for IGD and IGD+ use the Pareto optimal solutions of all batches combined and
-the reference point for hypervolume uses \eqn{(x_1, x_2, ..., x_n)},
-where n is the number of objectives and \eqn{x_i = 1} for all \eqn{i}.
+the reference point for hypervolume uses \eqn{(r_1, r_2, ..., r_m)},
+where m is the number of objectives and \eqn{r_i = 1} for all \eqn{i}.
 
-The lower and upper bounds for normalisation are obtained from the Pareto front considering all batches combined.
+The lower and upper bounds for normalisation are obtained from all the solutions.
 
 See \link[moocore:moocore-package]{moocore::moocore} for more information.
 }

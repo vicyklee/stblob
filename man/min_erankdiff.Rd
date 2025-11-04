@@ -23,14 +23,14 @@ the effective rank of the diffusion kernel for a given \code{beta} (\eqn{\beta})
 \details{
 As the diffusion kernel is symmetric and positive definite,
 its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
-are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of\eqn{L}.
+are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
 This is utilised to calculate the effective rank of the kernel for a given \eqn{\beta} following Roy and Vetterli (2007) and
 this loss function to be minimised is defined as the absolute difference between that and the targeted effective rank.
 
 Instead of treating \eqn{0\log{0} = 0}
 when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-with the constraint \eqn{e^{\beta\lambda_i}} > 0.
+to constrain \eqn{\sigma_i = 0} > 0.
 }
 \references{
 Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).

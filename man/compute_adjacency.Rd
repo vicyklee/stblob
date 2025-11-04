@@ -9,7 +9,7 @@ compute_adjacency(distmat, knn = 7)
 \arguments{
 \item{distmat}{a distance matrix.}
 
-\item{knn}{an integer of the k-th nearest neighbour. Default is 7.}
+\item{knn}{an integer of the \eqn{k^{th}} nearest neighbour. Default is 7.}
 }
 \value{
 a weighted adjacency matrix.
@@ -20,7 +20,7 @@ This function converts a distance matrix to a weighted adjacency matrix with loc
 \details{
 The local-scaling method follows Zelnik-Manor and Perona (2004).
 Instead of using a fixed scaling parameter for all data points, a local scaling parameter is calculated for
-every point based on their \eqn{k^th} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
+every point based on their \eqn{k^{th}} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
 See Zelnik-Manor and Perona (2004) for more information.
 }
 \references{

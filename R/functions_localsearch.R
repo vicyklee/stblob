@@ -36,12 +36,12 @@ compute_distmat <- function(data, method = "geodesic") {
 #' This function converts a distance matrix to a weighted adjacency matrix with local scaling.
 #'
 #' @param distmat a distance matrix.
-#' @param knn an integer of the k-th nearest neighbour. Default is 7.
+#' @param knn an integer of the \eqn{k^{th}} nearest neighbour. Default is 7.
 #' 
 #' @details
 #' The local-scaling method follows Zelnik-Manor and Perona (2004). 
 #' Instead of using a fixed scaling parameter for all data points, a local scaling parameter is calculated for
-#' every point based on their \eqn{k^th} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
+#' every point based on their \eqn{k^{th}} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
 #' See Zelnik-Manor and Perona (2004) for more information.
 #' 
 #' @returns a weighted adjacency matrix.
@@ -157,13 +157,13 @@ compute_erank_sigma <- function(sigma) {
 #' 
 #' @details
 #' As the diffusion kernel is symmetric and positive definite,
-#' its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of\eqn{L}.
+#' its eigenvalues \eqn{e^{\beta\lambda_i}}
+#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of \eqn{L}.
 #' 
 #' Instead of treating \eqn{0\log{0} = 0}
 #' when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 #' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-#' with the constraint \eqn{e^{\beta\lambda_i}} > 0.
+#' to constrain \eqn{\sigma_i = 0} > 0.
 #'
 #' @returns a numeric value of the effective rank.
 #' @references 
@@ -198,14 +198,14 @@ compute_erank <- function(L, beta) {
 #' @details
 #' As the diffusion kernel is symmetric and positive definite,
 #' its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of\eqn{L}.
+#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
 #' This is utilised to calculate the effective rank of the kernel for a given \eqn{\beta} following Roy and Vetterli (2007) and
 #' this loss function to be minimised is defined as the absolute difference between that and the targeted effective rank.
 #' 
 #' Instead of treating \eqn{0\log{0} = 0}
 #' when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 #' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-#' with the constraint \eqn{e^{\beta\lambda_i}} > 0.
+#' to constrain \eqn{\sigma_i = 0} > 0.
 #' 
 #' @returns a numeric value of the difference in effective ranks.
 #' @references 
@@ -233,7 +233,7 @@ min_erankdiff <- function(beta, L, k) {
 #' 
 #' @inheritParams diffusion_kernel
 #' @param k an integer of the number of clusters.
-#' @param par an numeric initial value for the parameter to be optimised over. The range is \eqn{[0.001, Inf]}. Default is 10.
+#' @param par an numeric initial value for the parameter to be optimised over. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
 #' @details
 #' To perform diffusion kernel k-means clustering, the diffusion rate (\eqn{\beta}) has to be optimised to capture the global similarity of
@@ -243,8 +243,8 @@ min_erankdiff <- function(beta, L, k) {
 #' which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
 #' 
 #' As the diffusion kernel is symmetric and positive definite,
-#' its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of\eqn{L}.
+#' its eigenvalues \eqn{e^{\beta\lambda_i}}
+#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamdba_i} are eigenvalues of\eqn{L}.
 #' This is utilised to calculate the effective rank of the kernel matrix for a given \eqn{\beta}
 #' and the optimisation is performed by [stats::optim()] using "L-BFGS-B" method with a lower bound of 0.001.
 #'  
@@ -279,9 +279,9 @@ optim_beta <- function(L, k, par = 10) {
 #' 
 #' @param distmat a distance matrix.
 #' @param k an integer of the number of clusters.
-#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7.
+#' @param w_knn an integer of the \eqn{k^{th}} nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7.
 #' @param l_normalise a Boolean to normalise graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
-#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, Inf]}. Default is 10.
+#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
 #' @details
 #' This function takes a distance matrix as input and computes a weighted adjacency matrix using local scaling as proposed by Zelnik-Manor and Perona (2004).
@@ -472,12 +472,12 @@ reorder_clust <- function(clust) {
 #' @param age a string or numeric value indicating the column of age. Default is the third column. 
 #' @param space_distmat a spatial distance matrix used when `space_kmat` is not supplied. Default is NULL.
 #' @param space_distmethod a string of method used when `space_kmat` and `space_distmat` are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.
-#' @param w_knn an integer of the k-th nearest neighbour used when `space_kmat` used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7 when `space_kmat` is not supplied.
+#' @param w_knn an integer of the \eqn{k^{th}} nearest neighbour used when `space_kmat` used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7 when `space_kmat` is not supplied.
 #' @param l_normalise a Boolean to normalise graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE when `space_kmat` is not supplied.
-#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, Inf]}. Default is 10 when `space_kmat` is not supplied.
+#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10 when `space_kmat` is not supplied.
 #' 
 #' @details
-#' The critical size of a cluster is defined as \eqn{\frac{N}{2K}} where \eqn{N} is the number of data points and \eqn{k} is the number of clusters.
+#' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data points and \eqn{k} is the number of clusters.
 #'
 #' @returns a list of the following objects.
 #' \itemize{
@@ -735,7 +735,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
       if (length(clust_points_tmp) == 0) {
         time_cost[j] <- 0  # only i was in the cluster
       } else {
-        time_cost[j] <- min(abs(data[i, age] - data[clust_points_tmp, 3]))
+        time_cost[j] <- min(abs(data[i, age] - data[clust_points_tmp, age]))
       }
     }
     #-------------------------------------------------------------------#
@@ -782,7 +782,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' Core local-search algorithm
 #' 
 #' @description
-#' This function performs an iterative bi-objective optimisation algorithm to assign clusters for a given k and r.
+#' This function performs an iterative bi-objective local search algorithm to assign clusters for a given k and r.
 #' 
 #' @inheritParams start_blobs
 #' @inheritParams find_blobs
@@ -794,7 +794,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' @param max_na a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.
 #'
 #' @details
-#' A diffusion kernel is applied to compute the distance to the centroid in space.]
+#' A diffusion kernel is applied to compute the distance to the centroid in space.
 #' See [distmat_to_kmat()] for more details for converting a distance matrix to a kernel matrix.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
@@ -802,7 +802,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' When `converge_ari` is specified, convergence is defined and activated when ARI between the latest and the previous search is
 #' above the specified threshold and at least three iterations are run.
 #'
-#' The critical size of a cluster is defined as \eqn{\frac{N}{2k}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+#' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 #'
 #' @returns 
 #' a numeric value of 1 if the search result is removed due to the presence of intersects,

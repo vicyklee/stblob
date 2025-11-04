@@ -11,7 +11,7 @@ optim_beta(L, k, par = 10)
 
 \item{k}{an integer of the number of clusters.}
 
-\item{par}{an numeric initial value for the parameter to be optimised over. The range is \eqn{[0.001, Inf]}. Default is 10.}
+\item{par}{an numeric initial value for the parameter to be optimised over. The range is \eqn{[0.001, \inf]}. Default is 10.}
 }
 \value{
 For \code{optim}, a list with components:
@@ -56,8 +56,8 @@ This is done by minimising the absolute difference between the number of cluster
 which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
 
 As the diffusion kernel is symmetric and positive definite,
-its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
-are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of\eqn{L}.
+its eigenvalues \eqn{e^{\beta\lambda_i}}
+are essentially singular values \eqn{\sigma_i}, where \eqn{\lamdba_i} are eigenvalues of\eqn{L}.
 This is utilised to calculate the effective rank of the kernel matrix for a given \eqn{\beta}
 and the optimisation is performed by \code{\link[stats:optim]{stats::optim()}} using "L-BFGS-B" method with a lower bound of 0.001.
 }

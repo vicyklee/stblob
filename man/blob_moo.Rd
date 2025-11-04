@@ -68,11 +68,11 @@ They must be \eqn{[0,1]}. Default is c(0.5,1).}
 
 \item{space_distmethod}{a string of method used when \code{space_kmat} and \code{space_distmat} are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.}
 
-\item{w_knn}{an integer of the k-th nearest neighbour used when \code{space_kmat} used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7 when \code{space_kmat} is not supplied.}
+\item{w_knn}{an integer of the \eqn{k^{th}} nearest neighbour used when \code{space_kmat} used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7 when \code{space_kmat} is not supplied.}
 
 \item{l_normalise}{a Boolean to normalise graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE when \code{space_kmat} is not supplied.}
 
-\item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, Inf]}. Default is 10 when \code{space_kmat} is not supplied.}
+\item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, \inf]}. Default is 10 when \code{space_kmat} is not supplied.}
 
 \item{pareto_similar_ari}{a numeric value of Adjusted Rand Index (ARI) that
 sets similarity threshold between two Pareto optimal solutions.

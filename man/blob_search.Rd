@@ -59,11 +59,11 @@ blob_search(
 
 \item{space_distmethod}{a string of method used when \code{space_kmat} and \code{space_distmat} are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.}
 
-\item{w_knn}{an integer of the k-th nearest neighbour used when \code{space_kmat} used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7 when \code{space_kmat} is not supplied.}
+\item{w_knn}{an integer of the \eqn{k^{th}} nearest neighbour used when \code{space_kmat} used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7 when \code{space_kmat} is not supplied.}
 
 \item{l_normalise}{a Boolean to normalise graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE when \code{space_kmat} is not supplied.}
 
-\item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, Inf]}. Default is 10 when \code{space_kmat} is not supplied.}
+\item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, \inf]}. Default is 10 when \code{space_kmat} is not supplied.}
 }
 \value{
 a numeric value of 1 if the search result is removed due to the presence of intersects,
@@ -79,10 +79,10 @@ or a list of the following objects if the search is meets the constraints,
 }
 }
 \description{
-This function performs an iterative bi-objective optimisation algorithm to assign clusters for a given k and r.
+This function performs an iterative bi-objective local search algorithm to assign clusters for a given k and r.
 }
 \details{
-A diffusion kernel is applied to compute the distance to the centroid in space.]
+A diffusion kernel is applied to compute the distance to the centroid in space.
 See \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} for more details for converting a distance matrix to a kernel matrix.
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.
@@ -90,7 +90,7 @@ Clusters are assigned in every iteration. It iterates until the set length or co
 When \code{converge_ari} is specified, convergence is defined and activated when ARI between the latest and the previous search is
 above the specified threshold and at least three iterations are run.
 
-The critical size of a cluster is defined as \eqn{\frac{N}{2k}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 }
 \seealso{
 \code{\link[=distmat_to_kmat]{distmat_to_kmat()}}, \code{\link[sf:st_as_sf]{sf::st_as_sf()}}
