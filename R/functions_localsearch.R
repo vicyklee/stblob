@@ -1,13 +1,13 @@
 #------------------------------------------------------------------------------#
 # Local search algorithm ####
 #------------------------------------------------------------------------------#
-#' Distance matrix computation
+#' Compute distance matrix
 #' 
 #' @description
 #' This function computes and returns a distance matrix.
 #'
 #' @param data a numeric matrix or data frame.
-#' @param method a string of method. It must be one of "geodesic" or "euclidean". Default is "geodesic".
+#' @param method a string of the method. It must be one of "geodesic" or "euclidean". Default is "geodesic".
 #'
 #' @details
 #' km is the unit when "geodesic" is specified.
@@ -36,7 +36,7 @@ compute_distmat <- function(data, method = "geodesic") {
 #' This function converts a distance matrix to a weighted adjacency matrix with local scaling.
 #'
 #' @param distmat a distance matrix.
-#' @param knn an integer of the \eqn{k^{th}} nearest neighbour. Default is 7.
+#' @param knn an integer of the k-th nearest neighbour. Default is 7.
 #' 
 #' @details
 #' The local-scaling method follows Zelnik-Manor and Perona (2004). 
@@ -66,7 +66,7 @@ compute_adjacency <- function(distmat, knn = 7) {
 #' This function computes and returns a graph Laplacian.
 #'
 #' @param W a symmetric adjaceny matrix.
-#' @param normalise a Boolean to normalise graph Laplacian. Default is TRUE.
+#' @param normalise a Boolean to normalise the graph Laplacian. Default is TRUE.
 #'
 #' @returns a graph Laplacian matrix.
 #' @references
@@ -158,10 +158,10 @@ compute_erank_sigma <- function(sigma) {
 #' @details
 #' As the diffusion kernel is symmetric and positive definite,
 #' its eigenvalues \eqn{e^{\beta\lambda_i}}
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of \eqn{L}.
+#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
 #' 
 #' Instead of treating \eqn{0\log{0} = 0}
-#' when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
+#' when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 #' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
 #' to constrain \eqn{\sigma_i = 0} > 0.
 #'
@@ -193,17 +193,17 @@ compute_erank <- function(L, beta) {
 #' the effective rank of the diffusion kernel for a given `beta` (\eqn{\beta}) based on the effective rank defined by Roy and Vetterli (2007).
 #' 
 #' @inheritParams diffusion_kernel
-#' @param k an integer of the targeted effective rank.
+#' @param k an integer of the number of clusters.
 #' 
 #' @details
 #' As the diffusion kernel is symmetric and positive definite,
 #' its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
 #' are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
 #' This is utilised to calculate the effective rank of the kernel for a given \eqn{\beta} following Roy and Vetterli (2007) and
-#' this loss function to be minimised is defined as the absolute difference between that and the targeted effective rank.
+#' this loss function is defined as the absolute difference between the effective rank and the target number of clusters.
 #' 
 #' Instead of treating \eqn{0\log{0} = 0}
-#' when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
+#' when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 #' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
 #' to constrain \eqn{\sigma_i = 0} > 0.
 #' 
@@ -240,7 +240,7 @@ min_erankdiff <- function(beta, L, k) {
 #' a graph Lapclacian matrix \eqn{L} in the feature space.
 #' 
 #' This is done by minimising the absolute difference between the number of clusters and the effective rank of the kernel matrix where the effective rank,
-#' which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
+#' which is a measure of effective dimensionality of a matrix, follows the definition by Roy and Vetterli (2007).
 #' 
 #' As the diffusion kernel is symmetric and positive definite,
 #' its eigenvalues \eqn{e^{\beta\lambda_i}}
@@ -280,7 +280,7 @@ optim_beta <- function(L, k, par = 10) {
 #' @param distmat a distance matrix.
 #' @param k an integer of the number of clusters.
 #' @param w_knn an integer of the \eqn{k^{th}} nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7.
-#' @param l_normalise a Boolean to normalise graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
+#' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
 #' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
 #' @details
@@ -347,7 +347,7 @@ compute_kmat <- function(data, method = "geodesic", k, w_knn = 7, l_normalise = 
 }
 
 #------------------------------------------------------------------------------#
-#' Spatial cost computation
+#' Compute spatial cost
 #'
 #' @description
 #' This function computes and returns the spatial costs of all points for a given cluster.
@@ -361,7 +361,7 @@ compute_kmat <- function(data, method = "geodesic", k, w_knn = 7, l_normalise = 
 #'
 #' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
 #' 
-#' @returns a numeric value or vector of spatial cost(s) for a given cluster.
+#' @returns a numeric value or vector of the spatial cost(s) for a given cluster.
 #'
 #' @export
 
@@ -380,13 +380,13 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL) {
 }
 
 #------------------------------------------------------------------------------#
-#' Intersect check 
+#' Check for spatial intersects
 #' 
 #' @description
-#' This function checks and returns a Boolean if any clusters intersect.
+#' This function checks and returns a Boolean if any clusters intersect in space.
 #'
 #' @param data a numeric matrix or data frame.
-#' @param clust a numeric vector of cluster assignment. Default is NULL when it is already present as a column in the data.
+#' @param clust a numeric vector of the cluster assignment. Default is NULL.
 #' @param coords a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
 #' @param hull_convex_ratio a numeric value controlling the convexity of the hulls passed onto [sf::st_concave_hull()]. 1 returns convex and 0 maximally concave hulls. Default is 0.
@@ -420,11 +420,11 @@ intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hul
 #' Reorder clusters
 #' 
 #' @description
-#' This function reorders and returns a vector of cluster assignment in ascending order.
+#' This function reorders and returns a vector of the cluster assignment in ascending order.
 #'
-#' @param clust a numeric vector of cluster assignment.
+#' @param clust a numeric vector of the cluster assignment.
 #'
-#' @returns a numeric vector of reordered cluster assignment.
+#' @returns a numeric vector of the reordered cluster assignment.
 
 reorder_clust <- function(clust) {
   # e.g. c(1,4,4,2) will become c(1,2,2,3)
@@ -462,19 +462,19 @@ reorder_clust <- function(clust) {
 }
 
 #------------------------------------------------------------------------------#
-#' Clustering evaluation
+#' Evaluate blobs
 #' 
 #' @description
-#' This function evaluates clustering performance.
+#' This function evaluates the performance of clustering.
 #'
 #' @inheritParams intersects_bool
 #' @inheritParams compute_spacecost
 #' @param age a string or numeric value indicating the column of age. Default is the third column. 
-#' @param space_distmat a spatial distance matrix used when `space_kmat` is not supplied. Default is NULL.
-#' @param space_distmethod a string of method used when `space_kmat` and `space_distmat` are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.
-#' @param w_knn an integer of the \eqn{k^{th}} nearest neighbour used when `space_kmat` used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7 when `space_kmat` is not supplied.
-#' @param l_normalise a Boolean to normalise graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE when `space_kmat` is not supplied.
-#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10 when `space_kmat` is not supplied.
+#' @param space_distmat a spatial distance matrix, used when `space_kmat` is not supplied. Default is NULL.
+#' @param space_distmethod a string of the method, used when `space_kmat` and `space_distmat` are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.
+#' @param w_knn an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with [compute_adjacency()] when `space_kmat` is not supplied. Default is 7.
+#' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()] when `space_kmat` is not supplied. Default is TRUE.
+#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with [optim_beta()] when `space_kmat` is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
 #' @details
 #' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data points and \eqn{k} is the number of clusters.
@@ -485,8 +485,6 @@ reorder_clust <- function(clust) {
 #'   \item \code{clust_below_size}: a numeric vector of clusters below the critical size.
 #'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} when `space_kmat` is not supplied.
 #' }
-#'
-#' @export
 
 eval_blobs <- function(data,
                        coords = c(1,2),
@@ -601,12 +599,10 @@ eval_blobs <- function(data,
 #'
 #' @param data a data matrix or data frame.
 #' @param k an integer of the number of clusters.
-#' @param random_start a Boolean to use random starting cluster members. Default is FALSE.
+#' @param random_start a Boolean to randomise starting cluster members. Default is FALSE.
 #' @inheritParams compute_spacecost
 #'
 #' @returns a data frame with assigned starting clusters as a column.
-#' 
-#' @export
 
 start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
   if (random_start == TRUE) {
@@ -661,7 +657,7 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
 #' 
 #' @param data a data matrix or data frame.
 #' @param k an integer of the number of clusters.
-#' @param r an numeric value of spatial relative weight. It must be \eqn{[0,1]}.
+#' @param r an numeric value of the spatial relative weight. It must be \eqn{[0,1]}.
 #' @param age a string or numeric value indicating the column of age. Default is the third column.
 #' @inheritParams compute_spacecost
 #'
@@ -680,8 +676,6 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
 #' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
 #'
 #' @returns a data frame with assigned clusters as a column.
-#' 
-#' @export
 
 find_blobs <- function(data, k, r, space_kmat, age = 3) {
   if (is.null(data$order)) stop("Did you forget to run start_blobs()?")
@@ -788,9 +782,9 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
 #' @inheritParams find_blobs
 #' @inheritParams eval_blobs
 #' @param iter an integer of the number of iterations. Default is 10.
-#' @param converge_ari a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.
+#' @param converge_ari a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is NULL.
 #' @param filter_intersects a Boolean to remove an assignment with intersects in space? Default is TRUE.
-#' @param filter_clustsize a Boolean to assign NA to clustes below the critical size. Default is TRUE.
+#' @param filter_clustsize a Boolean to assign NA to clusters below the critical size. Default is TRUE.
 #' @param max_na a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.
 #'
 #' @details
@@ -1011,7 +1005,7 @@ blob_search <- function(data,
 #' This function finds duplicates in a set of cluster assignments. It uses [mclust::adjustedRandIndex()] to measure similarity.
 #' 
 #' @param clust a numeric matrix of cluster assignments. Each row is an assignment.
-#' @param ari a numeric value of Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also [mclust::adjustedRandIndex()].
+#' @param ari a numeric value of the Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also [mclust::adjustedRandIndex()].
 #' 
 #' @returns a list of the following objects.
 #' \itemize{
@@ -1078,17 +1072,17 @@ find_dup <- function (clust, ari = 1) {
 #' Convert a list of blob objects to a pop object
 #' 
 #' @description
-#' This function convert a list of blob objects to a pop object with combined output
-#' from [blob_search()] and counts of filtered solutions by category.
+#' This function converts a list of `blob` objects to a `pop` object
+#' and the counts of filtered solutions.
 #' 
 #' @param blob_list a list of output from [blob_search()]
 #' 
 #' @returns a `pop` object includes a list of the following objects.
 #' \itemize{
-#'   \item \code{clust}: a numeric matrix of cluster assignments. Each row is a solution.
-#'   \item \code{summary}: a data frame of summary statistics.
-#'   \item \code{trace}: a data frame of summary statistics for tracing.
-#'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+#'   \item \code{clust}: a numeric matrix of the cluster assignments. Each row is a solution.
+#'   \item \code{summary}: a data frame of the summary statistics.
+#'   \item \code{trace}: a data frame of the summary statistics per iteration.
+#'   \item \code{n_filtered}: a data frame of the numbers of filtered solutions.
 #'   \item \code{space_kmat_optim_out}: a list of [stats::optim()] output from the optimisation of \eqn{\beta} in [distmat_to_kmat()].
 #' }
 
@@ -1190,7 +1184,7 @@ convert_to_pop <- function(blob_list) {
 #' 
 #' @description
 #' This function populates solutions by weighted sum scalarisation of the bi-objective
-#' search algorithm in [blob_search()] for a given k. 
+#' local search algorithm in [blob_search()] for a given k. 
 #' 
 #' @inheritParams start_blobs
 #' @inheritParams find_blobs
@@ -1209,7 +1203,7 @@ convert_to_pop <- function(blob_list) {
 #' When `converge_ari` is specified, convergence is defined and activated when ARI between the latest and the previous search is
 #' above the specified threshold and at least three iterations are run.
 #'
-#' The critical size of a cluster is defined as \eqn{\frac{N}{2k}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+#' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 #' 
 #' Scalarisation is achieved by varying the relative spatial weight generated by Latin hypercube sampling using [lhs::randomLHS()].
 #' 
@@ -1219,10 +1213,10 @@ convert_to_pop <- function(blob_list) {
 #' 
 #' @returns a `pop` object includes a list of the following objects.
 #' \itemize{
-#'   \item \code{clust}: a numeric matrix of cluster assignments. Each row is a solution.
-#'   \item \code{summary}: a data frame of summary statistics.
-#'   \item \code{trace}: a data frame of summary statistics for tracing.
-#'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+#'   \item \code{clust}: a numeric matrix of the cluster assignments. Each row is a solution.
+#'   \item \code{summary}: a data frame of the summary statistics.
+#'   \item \code{trace}: a data frame of summary statistics per iteration.
+#'   \item \code{n_filtered}: a data frame of the numbers of filtered solutions.
 #'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} in [distmat_to_kmat()] when `space_kmat` is not supplied.
 #' }
 #' 

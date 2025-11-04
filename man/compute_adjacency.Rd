@@ -9,7 +9,7 @@ compute_adjacency(distmat, knn = 7)
 \arguments{
 \item{distmat}{a distance matrix.}
 
-\item{knn}{an integer of the \eqn{k^{th}} nearest neighbour. Default is 7.}
+\item{knn}{an integer of the k-th nearest neighbour. Default is 7.}
 }
 \value{
 a weighted adjacency matrix.

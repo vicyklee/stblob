@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions_localsearch.R
 \name{compute_spacecost}
 \alias{compute_spacecost}
-\title{Spatial cost computation}
+\title{Compute spatial cost}
 \usage{
 compute_spacecost(space_kmat, clust_points, i = NULL)
 }
@@ -14,7 +14,7 @@ compute_spacecost(space_kmat, clust_points, i = NULL)
 \item{i}{an integer of a specific point index. Default is NULL.}
 }
 \value{
-a numeric value or vector of spatial cost(s) for a given cluster.
+a numeric value or vector of the spatial cost(s) for a given cluster.
 }
 \description{
 This function computes and returns the spatial costs of all points for a given cluster.

@@ -9,7 +9,7 @@ find_dup(clust, ari = 1)
 \arguments{
 \item{clust}{a numeric matrix of cluster assignments. Each row is an assignment.}
 
-\item{ari}{a numeric value of Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}}.}
+\item{ari}{a numeric value of the Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}}.}
 }
 \value{
 a list of the following objects.

@@ -7,11 +7,11 @@
 reorder_clust(clust)
 }
 \arguments{
-\item{clust}{a numeric vector of cluster assignment.}
+\item{clust}{a numeric vector of the cluster assignment.}
 }
 \value{
-a numeric vector of reordered cluster assignment.
+a numeric vector of the reordered cluster assignment.
 }
 \description{
-This function reorders and returns a vector of cluster assignment in ascending order.
+This function reorders and returns a vector of the cluster assignment in ascending order.
 }

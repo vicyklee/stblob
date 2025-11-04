@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions_localsearch.R
 \name{intersects_bool}
 \alias{intersects_bool}
-\title{Intersect check}
+\title{Check for spatial intersects}
 \usage{
 intersects_bool(
   data,
@@ -15,7 +15,7 @@ intersects_bool(
 \arguments{
 \item{data}{a numeric matrix or data frame.}
 
-\item{clust}{a numeric vector of cluster assignment. Default is NULL when it is already present as a column in the data.}
+\item{clust}{a numeric vector of the cluster assignment. Default is NULL.}
 
 \item{coords}{a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.}
 
@@ -27,5 +27,5 @@ intersects_bool(
 TRUE or FALSE
 }
 \description{
-This function checks and returns a Boolean if any clusters intersect.
+This function checks and returns a Boolean if any clusters intersect in space.
 }

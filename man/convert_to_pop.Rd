@@ -12,14 +12,14 @@ convert_to_pop(blob_list)
 \value{
 a \code{pop} object includes a list of the following objects.
 \itemize{
-\item \code{clust}: a numeric matrix of cluster assignments. Each row is a solution.
-\item \code{summary}: a data frame of summary statistics.
-\item \code{trace}: a data frame of summary statistics for tracing.
-\item \code{n_filtered}: a data frame of numbers of filtered solutions.
+\item \code{clust}: a numeric matrix of the cluster assignments. Each row is a solution.
+\item \code{summary}: a data frame of the summary statistics.
+\item \code{trace}: a data frame of the summary statistics per iteration.
+\item \code{n_filtered}: a data frame of the numbers of filtered solutions.
 \item \code{space_kmat_optim_out}: a list of \code{\link[stats:optim]{stats::optim()}} output from the optimisation of \eqn{\beta} in \code{\link[=distmat_to_kmat]{distmat_to_kmat()}}.
 }
 }
 \description{
-This function convert a list of blob objects to a pop object with combined output
-from \code{\link[=blob_search]{blob_search()}} and counts of filtered solutions by category.
+This function converts a list of \code{blob} objects to a \code{pop} object
+and the counts of filtered solutions.
 }

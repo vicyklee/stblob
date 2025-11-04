@@ -16,13 +16,13 @@ compute_kmat(
 \arguments{
 \item{data}{a numeric matrix or data frame.}
 
-\item{method}{a string of method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
+\item{method}{a string of the method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
 
 \item{k}{an integer of the number of clusters.}
 
 \item{w_knn}{an integer of the \eqn{k^{th}} nearest neighbour used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7.}
 
-\item{l_normalise}{a Boolean to normalise graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE.}
+\item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE.}
 
 \item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, \inf]}. Default is 10.}
 }

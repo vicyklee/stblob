@@ -268,7 +268,7 @@ blob_populate_batch <- function(data,
 #' Combine pop objects
 #' 
 #' @description
-#' This function combines two `pop` objects.
+#' This function combines `pop` objects.
 #'
 #' @param pop_a,pop_b a `pop`, `pop_pareto` or `pop_moo` object;
 #' see also [blob_populate()], [find_pareto()] and [eval_moo()].
@@ -440,10 +440,10 @@ parse_obj <- function(obj) {
 #' 
 #' @returns a `pop_pareto` object includes a list of the following objects.
 #' \itemize{
-#'   \item \code{clust}: a numeric matrix of cluster assignments. Each row is a Pareto optimal solution.
-#'   \item \code{summary}: a data frame of summary statistics of all feasible solutions.
-#'   \item \code{trace}: a data frame of summary statistics for tracing of all feasible solutions.
-#'   \item \code{n_filtered}: a data frame of numbers of filtered solutions.
+#'   \item \code{clust}: a numeric matrix of the cluster assignments. Each row is a Pareto optimal solution.
+#'   \item \code{summary}: a data frame of the summary statistics.
+#'   \item \code{trace}: a data frame of the summary statistics per iteration.
+#'   \item \code{n_filtered}: a data frame of the numbers of filtered solutions.
 #'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} in [distmat_to_kmat()] when `space_kmat` is not supplied.
 #'   \item \code{pareto_idx}: a numeric vector of indices of Pareto optimal cluster assignment.
 #'   \item \code{obj}: a string vector of objectives.
@@ -604,7 +604,7 @@ eval_moo <- function(batch_list, obj) {
 #' @param pop a `pop_pareto` or `pop_moo` object; see also [find_pareto()] and [eval_moo()].
 #' 
 #' @details
-#' The designation of a similar (redundant) solution is dependent on the order of objectives.
+#' The designation of a similar solution is dependent on the order of objectives.
 #' Objectives should be ranked in descending order based on their priority.
 #' 
 #' @returns a `pop_pareto` or `pop_moo` object depending on the input.
@@ -671,7 +671,7 @@ find_pareto_similar <- function(pop, ari) {
 #' Multi-objective optimisation (MOO) for spatiotemporal clustering 
 #'
 #' @description
-#' This function populates solutions by weighted sum scalarisation of the bi-objective function in [blob_search()],
+#' This function populates solutions by weighted sum scalarisation of the bi-objective local search algorithm in [blob_search()],
 #' optimises multiple objectives under constraints and returns a set of Pareto optimal solutions together with MOO quality indicators.
 #' 
 #' @inheritParams start_blobs

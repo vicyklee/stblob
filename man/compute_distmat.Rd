@@ -2,14 +2,14 @@
 % Please edit documentation in R/functions_localsearch.R
 \name{compute_distmat}
 \alias{compute_distmat}
-\title{Distance matrix computation}
+\title{Compute distance matrix}
 \usage{
 compute_distmat(data, method = "geodesic")
 }
 \arguments{
 \item{data}{a numeric matrix or data frame.}
 
-\item{method}{a string of method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
+\item{method}{a string of the method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
 }
 \value{
 a numeric distance matrix.

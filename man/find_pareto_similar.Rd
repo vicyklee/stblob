@@ -9,7 +9,7 @@ find_pareto_similar(pop, ari)
 \arguments{
 \item{pop}{a \code{pop_pareto} or \code{pop_moo} object; see also \code{\link[=find_pareto]{find_pareto()}} and \code{\link[=eval_moo]{eval_moo()}}.}
 
-\item{ari}{a numeric value of Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}}.}
+\item{ari}{a numeric value of the Adjusted Rand Index (ARI) that sets duplication threshold between two assignments. It must be \eqn{[0,1]}. Default is 1. See also \code{\link[mclust:adjustedRandIndex]{mclust::adjustedRandIndex()}}.}
 }
 \value{
 a \code{pop_pareto} or \code{pop_moo} object depending on the input.
@@ -18,7 +18,7 @@ a \code{pop_pareto} or \code{pop_moo} object depending on the input.
 This function finds similar Pareto optimal solutions and updates a \code{pop_pareto} object.
 }
 \details{
-The designation of a similar (redundant) solution is dependent on the order of objectives.
+The designation of a similar solution is dependent on the order of objectives.
 Objectives should be ranked in descending order based on their priority.
 }
 \seealso{

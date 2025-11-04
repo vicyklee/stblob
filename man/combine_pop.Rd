@@ -14,5 +14,5 @@ see also \code{\link[=blob_populate]{blob_populate()}}, \code{\link[=find_pareto
 a \code{pop} object.
 }
 \description{
-This function combines two \code{pop} objects.
+This function combines \code{pop} objects.
 }

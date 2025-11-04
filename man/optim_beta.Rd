@@ -53,7 +53,7 @@ To perform diffusion kernel k-means clustering, the diffusion rate (\eqn{\beta})
 a graph Lapclacian matrix \eqn{L} in the feature space.
 
 This is done by minimising the absolute difference between the number of clusters and the effective rank of the kernel matrix where the effective rank,
-which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
+which is a measure of effective dimensionality of a matrix, follows the definition by Roy and Vetterli (2007).
 
 As the diffusion kernel is symmetric and positive definite,
 its eigenvalues \eqn{e^{\beta\lambda_i}}

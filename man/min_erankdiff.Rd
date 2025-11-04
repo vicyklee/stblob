@@ -11,7 +11,7 @@ min_erankdiff(beta, L, k)
 
 \item{L}{a graph Laplacian.}
 
-\item{k}{an integer of the targeted effective rank.}
+\item{k}{an integer of the number of clusters.}
 }
 \value{
 a numeric value of the difference in effective ranks.
@@ -25,10 +25,10 @@ As the diffusion kernel is symmetric and positive definite,
 its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
 are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
 This is utilised to calculate the effective rank of the kernel for a given \eqn{\beta} following Roy and Vetterli (2007) and
-this loss function to be minimised is defined as the absolute difference between that and the targeted effective rank.
+this loss function is defined as the absolute difference between the effective rank and the target number of clusters.
 
 Instead of treating \eqn{0\log{0} = 0}
-when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
+when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
 to constrain \eqn{\sigma_i = 0} > 0.
 }

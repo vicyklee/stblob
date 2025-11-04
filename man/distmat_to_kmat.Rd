@@ -13,7 +13,7 @@ distmat_to_kmat(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par = 10)
 
 \item{w_knn}{an integer of the \eqn{k^{th}} nearest neighbour used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7.}
 
-\item{l_normalise}{a Boolean to normalise graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE.}
+\item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE.}
 
 \item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, \inf]}. Default is 10.}
 }

@@ -39,7 +39,7 @@ They must be \eqn{[0,1]}. Default is c(0.5,1).}
 
 \item{run}{an integer of the number of runs. Default is 100.}
 
-\item{converge_ari}{a numeric value of Adjusted Rand Index (ARI) that sets convergence threshold between two searches. It must be \eqn{[0,1]}. Default is NULL.}
+\item{converge_ari}{a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is NULL.}
 
 \item{coords}{a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.}
 
@@ -49,39 +49,39 @@ They must be \eqn{[0,1]}. Default is c(0.5,1).}
 
 \item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.}
 
-\item{random_start}{a Boolean to use random starting cluster members. Default is FALSE.}
+\item{random_start}{a Boolean to randomise starting cluster members. Default is FALSE.}
 
 \item{filter_intersects}{a Boolean to remove an assignment with intersects in space? Default is TRUE.}
 
-\item{filter_clustsize}{a Boolean to assign NA to clustes below the critical size. Default is TRUE.}
+\item{filter_clustsize}{a Boolean to assign NA to clusters below the critical size. Default is TRUE.}
 
 \item{max_na}{a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.}
 
 \item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
 
-\item{space_distmat}{a spatial distance matrix used when \code{space_kmat} is not supplied. Default is NULL.}
+\item{space_distmat}{a spatial distance matrix, used when \code{space_kmat} is not supplied. Default is NULL.}
 
-\item{space_distmethod}{a string of method used when \code{space_kmat} and \code{space_distmat} are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.}
+\item{space_distmethod}{a string of the method, used when \code{space_kmat} and \code{space_distmat} are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.}
 
-\item{w_knn}{an integer of the \eqn{k^{th}} nearest neighbour used when \code{space_kmat} used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7 when \code{space_kmat} is not supplied.}
+\item{w_knn}{an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with \code{\link[=compute_adjacency]{compute_adjacency()}} when \code{space_kmat} is not supplied. Default is 7.}
 
-\item{l_normalise}{a Boolean to normalise graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE when \code{space_kmat} is not supplied.}
+\item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}} when \code{space_kmat} is not supplied. Default is TRUE.}
 
-\item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto \code{\link[=optim_beta]{optim_beta()}}. The range is \eqn{[0.001, \inf]}. Default is 10 when \code{space_kmat} is not supplied.}
+\item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with \code{\link[=optim_beta]{optim_beta()}} when \code{space_kmat} is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.}
 }
 \value{
 a \code{pop} object includes a list of the following objects.
 \itemize{
-\item \code{clust}: a numeric matrix of cluster assignments. Each row is a solution.
-\item \code{summary}: a data frame of summary statistics.
-\item \code{trace}: a data frame of summary statistics for tracing.
-\item \code{n_filtered}: a data frame of numbers of filtered solutions.
+\item \code{clust}: a numeric matrix of the cluster assignments. Each row is a solution.
+\item \code{summary}: a data frame of the summary statistics.
+\item \code{trace}: a data frame of summary statistics per iteration.
+\item \code{n_filtered}: a data frame of the numbers of filtered solutions.
 \item \code{space_kmat_optim_out}: an output of \code{\link[stats:optim]{stats::optim()}} from the optimisation of \eqn{\beta} in \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} when \code{space_kmat} is not supplied.
 }
 }
 \description{
 This function populates solutions by weighted sum scalarisation of the bi-objective
-search algorithm in \code{\link[=blob_search]{blob_search()}} for a given k.
+local search algorithm in \code{\link[=blob_search]{blob_search()}} for a given k.
 }
 \details{
 A diffusion kernel is applied to compute the distance to the centroid in space.
@@ -92,7 +92,7 @@ Clusters are assigned in every iteration. It iterates until the set length or co
 When \code{converge_ari} is specified, convergence is defined and activated when ARI between the latest and the previous search is
 above the specified threshold and at least three iterations are run.
 
-The critical size of a cluster is defined as \eqn{\frac{N}{2k}} where \eqn{N} is the number of data point and \eqn{k} is the number of clusters.
+The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 
 Scalarisation is achieved by varying the relative spatial weight generated by Latin hypercube sampling using \code{\link[lhs:randomLHS]{lhs::randomLHS()}}.
 

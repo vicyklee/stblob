@@ -20,10 +20,10 @@ This function computes and returns the effective rank of the diffusion kerenl ma
 \details{
 As the diffusion kernel is symmetric and positive definite,
 its eigenvalues \eqn{e^{\beta\lambda_i}}
-are essentially singular values \eqn{\sigma_i}, where \eqn{\lamba_i} are eigenvalues of \eqn{L}.
+are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
 
 Instead of treating \eqn{0\log{0} = 0}
-when any singular values \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
+when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
 to constrain \eqn{\sigma_i = 0} > 0.
 }

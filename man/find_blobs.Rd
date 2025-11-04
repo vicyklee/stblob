@@ -11,7 +11,7 @@ find_blobs(data, k, r, space_kmat, age = 3)
 
 \item{k}{an integer of the number of clusters.}
 
-\item{r}{an numeric value of spatial relative weight. It must be \eqn{[0,1]}.}
+\item{r}{an numeric value of the spatial relative weight. It must be \eqn{[0,1]}.}
 
 \item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
 

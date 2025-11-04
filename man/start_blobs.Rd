@@ -13,7 +13,7 @@ start_blobs(data, k, space_kmat, random_start = FALSE)
 
 \item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
 
-\item{random_start}{a Boolean to use random starting cluster members. Default is FALSE.}
+\item{random_start}{a Boolean to randomise starting cluster members. Default is FALSE.}
 }
 \value{
 a data frame with assigned starting clusters as a column.

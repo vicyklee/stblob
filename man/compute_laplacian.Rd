@@ -9,7 +9,7 @@ compute_laplacian(W, normalise = TRUE)
 \arguments{
 \item{W}{a symmetric adjaceny matrix.}
 
-\item{normalise}{a Boolean to normalise graph Laplacian. Default is TRUE.}
+\item{normalise}{a Boolean to normalise the graph Laplacian. Default is TRUE.}
 }
 \value{
 a graph Laplacian matrix.

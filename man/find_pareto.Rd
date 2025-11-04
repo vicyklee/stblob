@@ -14,10 +14,10 @@ find_pareto(pop, obj = NULL)
 \value{
 a \code{pop_pareto} object includes a list of the following objects.
 \itemize{
-\item \code{clust}: a numeric matrix of cluster assignments. Each row is a Pareto optimal solution.
-\item \code{summary}: a data frame of summary statistics of all feasible solutions.
-\item \code{trace}: a data frame of summary statistics for tracing of all feasible solutions.
-\item \code{n_filtered}: a data frame of numbers of filtered solutions.
+\item \code{clust}: a numeric matrix of the cluster assignments. Each row is a Pareto optimal solution.
+\item \code{summary}: a data frame of the summary statistics.
+\item \code{trace}: a data frame of the summary statistics per iteration.
+\item \code{n_filtered}: a data frame of the numbers of filtered solutions.
 \item \code{space_kmat_optim_out}: an output of \code{\link[stats:optim]{stats::optim()}} from the optimisation of \eqn{\beta} in \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} when \code{space_kmat} is not supplied.
 \item \code{pareto_idx}: a numeric vector of indices of Pareto optimal cluster assignment.
 \item \code{obj}: a string vector of objectives.
