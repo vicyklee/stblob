@@ -722,7 +722,7 @@ blob_moo <- function (data,
                       l_normalise = NULL,
                       beta_par = NULL,
                       pareto_similar_ari = NULL,
-                      obj = c("space_wcss","-time_range_mean","-time_evenness_mean","n_removed")) {
+                      obj = c("space_wcss","-time_range_mean","-time_evenness_mean")) {
                       
   # compute space_kmat
   if (is.null(space_kmat)) {
