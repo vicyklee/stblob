@@ -379,7 +379,13 @@ compute_kmat <- function(data, method = "geodesic", k, w_knn = NULL, l_normalise
 #'
 #' @export
 
-compute_spacecost <- function(space_kmat, clust_points, i = NULL) {
+compute_spacecost <- function(space_kmat, clust_points, i = NULL, weights = NULL) {
+  w <- weights
+  if (is.null(weights)) {
+    w <- rep(1,nrow(space_kmat))
+  }
+  w_k <- w[clust_points]
+  
   if (!is.null(i)) {
     k_ii <- space_kmat[i, i]
     k_ik <- space_kmat[i , clust_points, drop = FALSE]
@@ -388,7 +394,8 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL) {
     k_ik <- space_kmat[ , clust_points, drop = FALSE]
   }
   k_kk <- space_kmat[clust_points, clust_points, drop = FALSE]
-  space_cost <- k_ii - 2*rowMeans(k_ik) + mean(k_kk)
+  # space_cost <- k_ii - 2*rowMeans(k_ik) + mean(k_kk)
+  space_cost <- k_ii - 2*rowSums(t(w_k*t(k_ik)))/sum(w_k) + sum(w_k %*% t(w_k) *k_kk)/(sum(w_k))^2
   
   return(space_cost)
 }
@@ -519,7 +526,8 @@ eval_blobs <- function(data,
                        space_distmethod = NULL,
                        w_knn = NULL,
                        l_normalise = NULL,
-                       beta_par = NULL) {
+                       beta_par = NULL,
+                       weights = NULL) {
   # total number of points
   N <- nrow(data)
   # total number of clusters
@@ -567,7 +575,8 @@ eval_blobs <- function(data,
     #-------------------------------------------------------------------#
     # spatial objective
     # kernel k means cost function
-    space_ss[j] <- sum(compute_spacecost(space_kmat = space_kmat, clust_points = clust_points, i = NULL)[clust_points])
+    space_ss[j] <- sum(compute_spacecost(space_kmat = space_kmat, clust_points = clust_points,
+                                         i = NULL, weights = weights)[clust_points])
     #-------------------------------------------------------------------#
     # temporal objectives
     time_range[j] <- max(data_k[ , age], na.rm = T) - min(data_k[ ,age], na.rm = T)
@@ -700,7 +709,7 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
 #'
 #' @returns a data frame with assigned clusters as a column.
 
-find_blobs <- function(data, k, r, space_kmat, age = 3) {
+find_blobs <- function(data, k, r, space_kmat, age = 3, weights = NULL) {
   if (is.null(data$order)) stop("Did you forget to run start_blobs()?")
   #-------------------------------------------------------------------#
   # a bit faster to handle data as a matrix
@@ -744,7 +753,8 @@ find_blobs <- function(data, k, r, space_kmat, age = 3) {
       # O(c^2) is unavoidable 
       space_cost[j] <- compute_spacecost(space_kmat = space_kmat,
                                          clust_points = clust_points,
-                                         i = i)
+                                         i = i,
+                                         weights = weights)
       #-------------------------------------------------------------------#
       # compute the temporal cost
       clust_points_tmp <- if (i %in% clust_points) clust_points[clust_points != i] else clust_points
@@ -856,10 +866,11 @@ blob_search <- function(data,
                         space_distmethod = NULL,
                         w_knn = NULL,
                         l_normalise = NULL,
-                        beta_par = NULL) {
+                        beta_par = NULL,
+                        weights = NULL) {
   # compute space_kmat
   if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- 7
+    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
     #-------------------------------------------------------------------#
@@ -902,7 +913,7 @@ blob_search <- function(data,
     data_old <- data
     #-------------------------------------------------------------------#
     # find_blobs()
-    data <- find_blobs(data = data, k = k, r = r, age = age, space_kmat = space_kmat)
+    data <- find_blobs(data = data, k = k, r = r, age = age, space_kmat = space_kmat, weights = weights)
     #-------------------------------------------------------------------#
     # count find_blobs() executed
     t <- t + 1
@@ -918,7 +929,8 @@ blob_search <- function(data,
                              age = age,
                              crs = crs,
                              hull_convex_ratio = hull_convex_ratio,
-                             space_kmat = space_kmat)
+                             space_kmat = space_kmat,
+                             weights = weights)
       clust_below_size <- eval_out$clust_below_size
       trace_newrow <- eval_out$summary
       trace_newrow$iter <- t
@@ -969,7 +981,8 @@ blob_search <- function(data,
                                      age = age,
                                      crs = crs,
                                      hull_convex_ratio = hull_convex_ratio,
-                                     space_kmat = space_kmat)
+                                     space_kmat = space_kmat,
+                                     weights = weights)
       updated_cols <- intersect(names(summary), names(eval_out_updated$summary))
       summary[ , updated_cols] <- eval_out_updated$summary[ , updated_cols]
       summary$n_removed <- n_removed
@@ -1266,10 +1279,11 @@ blob_populate <- function(data,
                           space_distmethod = NULL,
                           w_knn = NULL,
                           l_normalise = NULL,
-                          beta_par = NULL) {
+                          beta_par = NULL,
+                          weights = NULL) {
   # compute space_kmat
   if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- 7
+    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
     #-------------------------------------------------------------------#
@@ -1336,7 +1350,8 @@ blob_populate <- function(data,
                   filter_intersects = filter_intersects,
                   filter_clustsize = filter_clustsize,
                   max_na = max_na,
-                  space_kmat = space_kmat) 
+                  space_kmat = space_kmat,
+                  weights = weights) 
     }, future.seed = T)
     #-------------------------------------------------------------------#
     pop <- convert_to_pop(blob_list)
@@ -1365,7 +1380,8 @@ blob_populate <- function(data,
                              filter_intersects = filter_intersects,
                              filter_clustsize = filter_clustsize,
                              max_na = max_na,
-                             space_kmat = space_kmat),
+                             space_kmat = space_kmat,
+                             weights = weights),
           k = k
         )
       }, grid$k_vec, grid$r_vec, future.seed = TRUE)
