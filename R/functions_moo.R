@@ -41,10 +41,11 @@ blob_populate_batch <- function(data,
                                 space_distmethod = NULL,
                                 w_knn = NULL,
                                 l_normalise = NULL,
-                                beta_par = NULL) {
+                                beta_par = NULL,
+                                weights = NULL) {
   # compute space_kmat
   if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- 7
+    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
     #-------------------------------------------------------------------#
@@ -113,7 +114,8 @@ blob_populate_batch <- function(data,
                            filter_intersects = filter_intersects,
                            filter_clustsize = filter_clustsize,
                            max_na = max_na,
-                           space_kmat = space_kmat),
+                           space_kmat = space_kmat,
+                           weights = weights),
         batch = batch
       )
     }, grid$r_vec, grid$batch_vec, future.seed = TRUE)
@@ -178,7 +180,8 @@ blob_populate_batch <- function(data,
                              filter_intersects = filter_intersects,
                              filter_clustsize = filter_clustsize,
                              max_na = max_na,
-                             space_kmat = space_kmat),
+                             space_kmat = space_kmat,
+                             weights = weights),
           k = k,
           batch = batch
         )
@@ -721,12 +724,13 @@ blob_moo <- function (data,
                       w_knn = NULL,
                       l_normalise = NULL,
                       beta_par = NULL,
+                      weights = NULL,
                       pareto_similar_ari = NULL,
                       obj = c("space_wcss","-time_range_mean","-time_evenness_mean")) {
                       
   # compute space_kmat
   if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- 7
+    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
     if (is.null(l_normalise)) l_normalise <- TRUE
     if (is.null(beta_par)) beta_par <- 10
     
@@ -772,7 +776,8 @@ blob_moo <- function (data,
                                     filter_intersects = filter_intersects,
                                     filter_clustsize = filter_clustsize,
                                     max_na = max_na,
-                                    space_kmat = space_kmat)
+                                    space_kmat = space_kmat,
+                                    weights = weights)
   #-------------------------------------------------------------------#
   # evaluate MOO
   pop_moo <- eval_moo(batch_list = batch_list, obj = obj)
