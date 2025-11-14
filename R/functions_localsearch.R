@@ -288,7 +288,7 @@ optim_beta <- function(L, k, par = 10) {
 #' 
 #' @param distmat a distance matrix.
 #' @param k an integer of the number of clusters.
-#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7.
+#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is NULL.
 #' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
 #' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
@@ -298,6 +298,8 @@ optim_beta <- function(L, k, par = 10) {
 #' Then, it uses a diffusion kernel over the graph with optimised diffusion rate \eqn{\beta} to capture the global structure for kernel-based clustering (Kondor and Lafferty, 2002; Kondor and Vert, 2004).
 #' \eqn{\beta} is optimised by minimising the absolute difference between the number of clusters and the effective rank of the kernel matrix where the effective rank,
 #' which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
+#' 
+#' \eqn{\frac{n}{k}} is used as the k-th nearest neighbour when `w_knn` is NULL for \eqn{n} samples and \eqn{k} clusters.
 #' 
 #' @returns a list of the following objects.
 #' \itemize{
@@ -320,7 +322,10 @@ optim_beta <- function(L, k, par = 10) {
 #' 
 #' @export
 
-distmat_to_kmat <- function(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par = 10) {
+distmat_to_kmat <- function(distmat, k, w_knn = NULL, l_normalise = TRUE, beta_par = 10) {
+  if (is.null(w_knn)){
+    w_knn <- nrow(distmat) / k
+  }
   # distance matrix to weighted adjaceny matrix
   W <- compute_adjacency(distmat = distmat, knn = w_knn)
   # compute normalised graph Laplacian
@@ -349,7 +354,7 @@ distmat_to_kmat <- function(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par 
 #' 
 #' @export
 
-compute_kmat <- function(data, method = "geodesic", k, w_knn = 7, l_normalise = TRUE, beta_par = 10) {
+compute_kmat <- function(data, method = "geodesic", k, w_knn = NULL, l_normalise = TRUE, beta_par = 10) {
   distmat <- compute_distmat(data = data, method = method)
   kmat_out <- distmat_to_kmat(distmat = distmat, k = k , w_knn = w_knn, l_normalise = l_normalise, beta_par = beta_par)
   return(kmat_out)
@@ -405,6 +410,7 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL) {
 #' @export
 
 intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hull_convex_ratio = 0) {
+  suppressMessages(sf::sf_use_s2(FALSE))
   data <- as.data.frame(data)
   #-------------------------------------------------------------------#
   # if (is.null(crs)) { crs <- NA } # Euclidean
@@ -413,12 +419,20 @@ intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hul
   data_sf <- sf::st_as_sf(data, coords = coords, crs = crs)
   #-------------------------------------------------------------------#
   # obtain convex/concave hulls
-  hulls <- stats::aggregate(data_sf$geometry, by = list(clust = data_sf$clust), sf::st_union) 
-  hulls <- sf::st_as_sf(hulls) 
+  suppressMessages({
+  hulls <- stats::aggregate(data_sf$geometry, by = list(clust = data_sf$clust), function(x){
+    x <- sf::st_combine(x)
+    x <- sf::st_union(x, by_feature = TRUE)
+    return(x)
+    }
+    ) 
+  hulls <- sf::st_as_sf(hulls)
   hulls <- sf::st_concave_hull(hulls, ratio = hull_convex_ratio) # convex hulls
   #-------------------------------------------------------------------#
   # indicate TRUE/FALSE if there are any intersects
+  hulls <- sf::st_make_valid(hulls)
   intersects <- sf::st_intersects(hulls$geometry, sparse = F)
+  })
   diag(intersects) <- NA
   bool <- if (any(intersects == TRUE, na.rm = TRUE)) TRUE else FALSE
   #-------------------------------------------------------------------#
@@ -481,7 +495,7 @@ reorder_clust <- function(clust) {
 #' @param age a string or numeric value indicating the column of age. Default is the third column. 
 #' @param space_distmat a spatial distance matrix, used when `space_kmat` is not supplied. Default is NULL.
 #' @param space_distmethod a string of the method, used when `space_kmat` and `space_distmat` are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.
-#' @param w_knn an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with [compute_adjacency()] when `space_kmat` is not supplied. Default is 7.
+#' @param w_knn an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with [compute_adjacency()] when `space_kmat` is not supplied.
 #' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()] when `space_kmat` is not supplied. Default is TRUE.
 #' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with [optim_beta()] when `space_kmat` is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
