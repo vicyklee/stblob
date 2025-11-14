@@ -92,13 +92,17 @@ plot_objspace <- function (pop,
 
 pivot_trace <- function (df) {
   stat <- c("space_wcss", "time_range_mean", "time_range_sd", "time_evenness_mean", "time_evenness_sd", "ari")
+  
+  optional_cols <- c("batch", "k_o")
+  optional_cols <- optional_cols[optional_cols %in% names(df)]
+  fct_cols <- c("run", optional_cols)
+
   df <- df %>%
-    dplyr::select(c(dplyr::all_of(stat), "iter", "r", "run", "batch", "k_o")) %>%
+    dplyr::select(c(dplyr::all_of(stat), "iter", "r", "run", dplyr::all_of(fct_cols))) %>%
     tidyr::pivot_longer(cols = dplyr::all_of(stat), names_to = "stat", values_to = "value") %>%
     dplyr::mutate(stat = factor(stat, levels = unique(stat)),
-                  run = as.factor(run),
-                  batch = as.factor(batch),
-                  k_o = as.factor(k_o)) 
+                  across(all_of(fct_cols), as.factor))
+
   return(df)
 }
 
@@ -116,12 +120,17 @@ pivot_trace <- function (df) {
 plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
   # check for input
   colour <- match.arg(colour)
-  colour_cols <- names(pop$summary)[names(pop$summary) %in% c("r", "batch", "k_o")]
+  # colour_cols <- names(pop$summary)[names(pop$summary) %in% c("r", "batch", "k_o")]
+  
+  optional_cols <- c("batch", "k_o")
+  optional_cols <- optional_cols[optional_cols %in% names(df)]
+  group_cols <- c("stat", "run", optional_cols)
   
   trace <- pop$trace %>% pivot_trace()
   
   p <- ggplot2::ggplot(trace) +
-    ggplot2::geom_line(ggplot2::aes(x = iter, y = value, group = interaction(stat, run, batch, r, k_o),
+    ggplot2::geom_line(ggplot2::aes(x = iter, y = value,
+                                    group = interaction(!!!syms(group_cols), sep = "_"),
                                     colour = .data[[colour]]), alpha = alpha) +
     ggplot2::facet_wrap(~stat, scales = "free", nrow = 2) +
     ggplot2::theme(axis.title.y = ggplot2::element_blank())  +
@@ -220,7 +229,7 @@ plot_space <- function (data,
         ggplot2::geom_sf(data = world, alpha = 0.2) +
         ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
         ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = 3035) +
+        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = crs) +
         ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
         ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end)
     }
