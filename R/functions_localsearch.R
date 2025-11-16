@@ -51,15 +51,18 @@ compute_distmat <- function(data, method = "geodesic") {
 #' @export
 
 compute_adjacency <- function(distmat, knn = 7) {
-  sorted_distmat <- t(apply(distmat, 1, sort)) # sort 
+  knn <- floor(knn)
+  sorted_distmat <- t(apply(distmat[,-1], 1, sort)) # sort 
   # distance to the k-th nearest neighbour 
   knn_distmat <- apply(sorted_distmat, 1, function(x) {
-    d <- x[knn]
-    # if dist of knn is 0, find (k+1)nn
-    while(d == 0) {
-      knn <- knn + 1
-      d <- x[knn]
-    }
+    eff_knn <- which(x == unique(x)[knn])[1]
+    d <- x[eff_knn]
+    # # if dist of knn is 0, find (k+7)nn
+    # while(d == 0) {
+    #   unique(d)
+    #   knn <- knn + knn
+    #   d <- x[knn]
+    # }
     return(d)
   })
   V <- outer(knn_distmat, knn_distmat, "*") # a matrix of sigma_i * sigma_j
