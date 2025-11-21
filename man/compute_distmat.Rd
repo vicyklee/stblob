@@ -9,7 +9,7 @@ compute_distmat(data, method = "geodesic")
 \arguments{
 \item{data}{a numeric matrix or data frame.}
 
-\item{method}{a string of the method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
+\item{method}{a string of the method. Either "geodesic" or "euclidean" is available. Default is "geodesic".}
 }
 \value{
 a numeric distance matrix.

@@ -15,7 +15,7 @@ diffusion_kernel(L, beta)
 a diffusion kernel matrix
 }
 \description{
-This function computes and returns a kernel matrix using a diffusion kernel as defined in Kondor and Lafferty (2002).
+This function computes and returns a kernel matrix using a diffusion kernel as defined by Kondor and Lafferty (2002).
 }
 \references{
 Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).

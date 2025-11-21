@@ -11,7 +11,7 @@
 #' @seealso [grDevices::pdf()]
 #' @export
 
-savePDF <- function(p, file, width, height, ...) {
+save_pdf <- function(p, file, width, height, ...) {
   grDevices::pdf(file = file, width = width, height = height, ...)
   grDevices::pdf.options(encoding = 'CP1250')
   print(p)
@@ -36,9 +36,15 @@ plot_objspace <- function (pop,
                            colour = c("r", "batch", "k_o", "pareto"),
                            normalise = TRUE,
                            alpha = 0.8) {
+
   # check for input
   colour <- match.arg(colour)
   colour_cols <- names(pop$summary)[names(pop$summary) %in% c("r", "batch", "k_o", "pareto")]
+  
+  parse_obj_out <- parse_obj(obj)
+  signed_obj <- obj
+  obj <- parse_obj_out$obj
+  maximise_obj_idx <- parse_obj_out$maximise_obj_idx
   
   objspace <- pop$summary %>%
     dplyr::select(c(dplyr::all_of(obj), dplyr::all_of(colour_cols))) %>%
@@ -46,19 +52,23 @@ plot_objspace <- function (pop,
                   batch = as.factor(batch),
                   k_o = as.factor(k_o))
   
-  pareto_objspace <- subset(objspace, pareto == 1)
+  if(length(parse_obj_out$maximise_obj_idx) > 0) {
+    objspace <- objspace %>%
+      dplyr::mutate_at(obj[maximise_obj_idx], function(x) -1*x) %>%
+      dplyr::rename_with(~paste0("-",.x), dplyr::all_of(obj[maximise_obj_idx]))
+  }
   
   if (normalise == TRUE) {
     # obtain upper and lower bounds from the Pareto front
-    ub <- vapply(1:2, function(i) max(pareto_objspace[[obj[i]]]), numeric(1))
-    lb <- vapply(1:2, function(i) min(pareto_objspace[[obj[i]]]), numeric(1)) 
+    ub <- vapply(1:2, function(i) max(objspace[[signed_obj[i]]]), numeric(1))
+    lb <- vapply(1:2, function(i) min(objspace[[signed_obj[i]]]), numeric(1)) 
     # normalise the objectives
     objspace[, c(1,2)] <- moocore::normalise(objspace[, c(1,2)], to_range = c(0,1), lower = lb, upper = ub)
   }
   
   p <- ggplot2::ggplot(objspace) +
-    ggplot2::geom_point(ggplot2::aes(x = .data[[obj[1]]],
-                                     y = .data[[obj[2]]],
+    ggplot2::geom_point(ggplot2::aes(x = .data[[signed_obj[1]]],
+                                     y = .data[[signed_obj[2]]],
                                      colour = .data[[colour]]),
                         alpha = alpha)
   
@@ -86,24 +96,24 @@ plot_objspace <- function (pop,
 #' 
 #' @description
 #' This function pivots trace summary for plotting.
-#' @param df a data frame of trace summary.
+#' @param data a data frame of trace summary.
 #' @return a pivoted data frame of trace summary.
 #' @seealso [tidyr::pivot_longer()]
 
-pivot_trace <- function (df) {
+pivot_trace <- function (data) {
   stat <- c("space_wcss", "time_range_mean", "time_range_sd", "time_evenness_mean", "time_evenness_sd", "ari")
   
   optional_cols <- c("batch", "k_o")
-  optional_cols <- optional_cols[optional_cols %in% names(df)]
+  optional_cols <- optional_cols[optional_cols %in% names(data)]
   fct_cols <- c("run", optional_cols)
 
-  df <- df %>%
+  data <- data %>%
     dplyr::select(c(dplyr::all_of(stat), "iter", "r", "run", dplyr::all_of(fct_cols))) %>%
     tidyr::pivot_longer(cols = dplyr::all_of(stat), names_to = "stat", values_to = "value") %>%
     dplyr::mutate(stat = factor(stat, levels = unique(stat)),
-                  across(all_of(fct_cols), as.factor))
+                  dplyr::across(dplyr::all_of(fct_cols), as.factor))
 
-  return(df)
+  return(data)
 }
 
 #------------------------------------------------------------------------------#
@@ -120,17 +130,16 @@ pivot_trace <- function (df) {
 plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
   # check for input
   colour <- match.arg(colour)
-  # colour_cols <- names(pop$summary)[names(pop$summary) %in% c("r", "batch", "k_o")]
   
   optional_cols <- c("batch", "k_o")
-  optional_cols <- optional_cols[optional_cols %in% names(df)]
+  optional_cols <- optional_cols[optional_cols %in% names(pop$trace)]
   group_cols <- c("stat", "run", optional_cols)
   
   trace <- pop$trace %>% pivot_trace()
   
   p <- ggplot2::ggplot(trace) +
     ggplot2::geom_line(ggplot2::aes(x = iter, y = value,
-                                    group = interaction(!!!syms(group_cols), sep = "_"),
+                                    group = interaction(!!!rlang::syms(group_cols), sep = "_"),
                                     colour = .data[[colour]]), alpha = alpha) +
     ggplot2::facet_wrap(~stat, scales = "free", nrow = 2) +
     ggplot2::theme(axis.title.y = ggplot2::element_blank())  +
@@ -160,30 +169,35 @@ plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
 #' @param coords a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] and [sf::st_transform()]. Default is NULL.
 #' @param hull a Boolean. Should convex hulls be drawn? Default is FALSE.
+#' @param alpha See <[`aes-colour-fill-alpha`][ggplot2::aes_colour_fill_alpha()]>.
+#' @param weights a numeric vector of weights for each data point, used to indicate them by data point colours. Default is NULL.
 #' @inheritParams intersects_bool
 #' @return a `ggplot` object.
 #' @seealso [sf::st_as_sf()], [sf::st_transform()]
 #' @export
 
-plot_space <- function (data,
-                        clust,
-                        space = c("earth", "euclidean"),
-                        coords = c(1,2),
-                        crs = NULL,
-                        hull = FALSE,
-                        hull_convex_ratio = 0.8) {
+plot_space <- function(data,
+                       clust = NA,
+                       space = "earth",
+                       coords = c(1,2),
+                       crs = NULL,
+                       alpha = 0.8,
+                       hull = FALSE,
+                       hull_convex_ratio = 0.8,
+                       weights = NULL) {
+  
   space <- match.arg(space, choices = c("earth", "euclidean"))
   if (space == "earth" & is.null(crs)) crs <- 4036
   if (space == "euclidean" & is.null(crs)) crs <- NA
   
   data$clust <- as.factor(clust)
-  pts <- sf::st_as_sf(data, coords = coords, crs = crs)
+  pts <- sf::st_as_sf(data, coords = coords, crs = 4326)
   if (!is.na(crs)) {
     pts <- sf::st_transform(pts, crs = crs)
     # Get bounding box of your data
     bb <- sf::st_bbox(pts)
     # Add a buffer (in degrees, assuming EPSG:4326)
-    if (crs == 4036) {
+    if (crs == 4036 | crs == 4326) {
       buffer <- 5
     }
     if (crs == 3035) {
@@ -196,43 +210,78 @@ plot_space <- function (data,
   begin <- 0.1
   end <- 0.8
   
+  if (is.null(weights)) {
+    colour <- "clust"
+  } else {
+    pts$weight <- weights
+    colour <- "weight"
+  }
+  
   if (hull == FALSE) {
     if (space == "euclidean") {
-      p <- ggplot2::ggplot() +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-        ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end) 
+      if (!all(is.na(clust))) {
+        p <- ggplot2::ggplot() +
+          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = .data[[colour]]))
+      } else {
+        p <- ggplot2::ggplot() +
+          ggplot2::geom_sf(data = pts, alpha = alpha, colour = "blue")
+      }
+      
     } else if (space == "earth") {
       world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
       world <- sf::st_transform(world, crs = crs)
-      p <- ggplot2::ggplot() +
-        ggplot2::geom_sf(data = world, alpha = 0.2) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) +
-        ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end) 
+      if (!all(is.na(clust))) {
+        p <- ggplot2::ggplot() +
+          ggplot2::geom_sf(data = world, alpha = 0.2) +
+          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = .data[[colour]])) +
+          ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
+      } else {
+        p <- ggplot2::ggplot() +
+          ggplot2::geom_sf(data = world, alpha = 0.2) +
+          ggplot2::geom_sf(data = pts, alpha = alpha, colour = "blue") +
+          ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
+      }
     }
-  } else if (hull == TRUE) {
-    hulls <- pts %>%
-      dplyr::filter(!is.na(clust)) %>%
-      dplyr::group_by(clust) %>%
-      dplyr::summarise(geometry = sf::st_combine(geometry)) %>%
-      sf::st_concave_hull(ratio = hull_convex_ratio)
+  } else {
+    if (all(is.na(clust))) {
+      stop("clust is required to draw hulls.")
+    }
+    suppressWarnings({
+      hulls <- pts %>%
+        dplyr::filter(!is.na(clust)) %>%
+        dplyr::group_by(clust) %>%
+        dplyr::summarise(geometry = sf::st_combine(geometry)) %>% 
+        sf::st_concave_hull(ratio = hull_convex_ratio) %>%
+        sf::st_make_valid() %>%
+        sf::st_collection_extract("POLYGON", warn = FALSE)
+    })
+    
     if (space == "euclidean") {
       p <- ggplot2::ggplot() +
-        ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-        ggplot2::scale_colour_viridis_d(option = "G", direction = -1,  begin = begin, end = end) +
+        ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) +
         ggplot2::scale_fill_viridis_d(option = "G", direction = -1,  begin = begin, end = end)
+      
     } else if (space == "earth") {
       world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
       world <- sf::st_transform(world, crs = crs)
+      
       p <- ggplot2::ggplot() +
         ggplot2::geom_sf(data = world, alpha = 0.2) +
-        ggplot2::geom_sf(data = hulls, ggplot2::aes(colour = clust, fill = clust), lwd = 0.3, alpha = 0.1, show.legend = F) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
-        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = crs) +
-        ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
-        ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end)
+        ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) +
+        ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = crs)
     }
+    p <- p +
+      ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end)
+  }
+  
+  if (is.null(weights)) {
+    if(!all(is.na(clust))) {
+      p <- p + ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end, na.value = "grey50")
+    }
+  } else {
+    p <- p + ggplot2::scale_colour_viridis_c(option = "G", direction = -1, begin = begin, end = end)
   }
   return(p)
 }
@@ -249,10 +298,11 @@ plot_space <- function (data,
 
 plot_time <- function (data, clust, age = 3) {
   data$clust <- as.factor(clust)
-  data$age <- data[, age]
+  age_col <- names(data[,3])
+
   begin <- 0.1
   end <- 0.8
-  p <- ggplot2::ggplot(data, ggplot2::aes(x = age,
+  p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[age_col]],
                                           y = clust,
                                           colour = clust,
                                           fill = clust)) +
@@ -263,7 +313,7 @@ plot_time <- function (data, clust, age = 3) {
     ggplot2::theme(axis.text.y = ggplot2::element_blank(),
                    axis.ticks.y = ggplot2::element_blank(),
                    axis.title.y = ggplot2::element_blank()) +
-    ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
+    ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end, na.value = "grey50") +
     ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
     ggplot2::scale_y_discrete(expand = ggplot2::expansion(mult = c(0,0), add = c(0.2,0.6)))
   return(p)
@@ -279,7 +329,7 @@ plot_time <- function (data, clust, age = 3) {
 #' @returns a `ggplot` object.
 #' @export
 
-plot_moo_quality <- function(pop_moo, indicator = c("igd", "igd_plus", "hv")) {
+plot_mooquality <- function(pop_moo, indicator = c("igd", "igd_plus", "hv")) {
   indicator <- match.arg(indicator)
   moo_quality <- cbind(batch = as.integer(1:nrow(pop_moo$moo_quality)), pop_moo$moo_quality)
   ggplot2::ggplot(moo_quality) +

@@ -9,13 +9,15 @@ eval_blobs(
   coords = c(1, 2),
   age = 3,
   crs = 4326,
+  space_clustmethod = "kmedoids",
   hull_convex_ratio = 0,
   space_kmat = NULL,
   space_distmat = NULL,
   space_distmethod = NULL,
   w_knn = NULL,
   l_normalise = NULL,
-  beta_par = NULL
+  beta_par = NULL,
+  weights = NULL
 )
 }
 \arguments{
@@ -27,19 +29,23 @@ eval_blobs(
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
 
-\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.}
+\item{space_clustmethod}{a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".}
 
-\item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
+\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.5.}
 
-\item{space_distmat}{a spatial distance matrix, used when \code{space_kmat} is not supplied. Default is NULL.}
+\item{space_kmat}{a kernel matrix computed from the spatial distance matrix. Default is NULL.}
 
-\item{space_distmethod}{a string of the method, used when \code{space_kmat} and \code{space_distmat} are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.}
+\item{space_distmat}{a spatial distance matrix. Default is NULL.}
+
+\item{space_distmethod}{a string of the method, used when \code{space_kmat} and \code{space_distmat} are not specified. Either "geodesic" or "euclidean" is available. Default is "geodesic".}
 
 \item{w_knn}{an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with \code{\link[=compute_adjacency]{compute_adjacency()}} when \code{space_kmat} is not supplied. Default is 7.}
 
 \item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}} when \code{space_kmat} is not supplied. Default is TRUE.}
 
 \item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with \code{\link[=optim_beta]{optim_beta()}} when \code{space_kmat} is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.}
+
+\item{weights}{a numeric vector of weights for each data point. Default is NULL.}
 }
 \value{
 a list of the following objects.

@@ -4,14 +4,16 @@
 \alias{start_blobs}
 \title{Assign the starting cluster members}
 \usage{
-start_blobs(data, k, space_kmat, random_start = FALSE)
+start_blobs(data, k, space_mat, method = "kmedoids", random_start = FALSE)
 }
 \arguments{
 \item{data}{a data matrix or data frame.}
 
 \item{k}{an integer of the number of clusters.}
 
-\item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
+\item{space_mat}{a spatial distance matrix or a kernel matrix computed from the spatial distance matrix.}
+
+\item{method}{a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".}
 
 \item{random_start}{a Boolean to randomise starting cluster members. Default is FALSE.}
 }

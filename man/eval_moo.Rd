@@ -31,9 +31,8 @@ This function evaluates multi-objective optimisation (MOO) performance.
 The quality indicators include IGD, IGD+ and hypervolume commonly used in MOO,
 computed using \code{\link[moocore:igd]{moocore::igd()}}, \code{\link[moocore:igd]{moocore::igd_plus()}}, and \code{\link[moocore:hypervolume]{moocore::hypervolume()}}.
 
-The reference for IGD and IGD+ use the Pareto optimal solutions of all batches combined and
-the reference point for hypervolume uses \eqn{(r_1, r_2, ..., r_m)},
-where m is the number of objectives and \eqn{r_i = 1} for all \eqn{i}.
+The reference for IGD and IGD+ are the Pareto optimal solutions from the final cumulative batch and
+the reference point in hypervolume is \eqn{(1_m = (1,1,,1) \in \R^m)} for \eqn{m} objectives.
 
 The lower and upper bounds for normalisation are obtained from all the solutions.
 

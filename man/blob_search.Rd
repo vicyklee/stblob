@@ -12,6 +12,7 @@ blob_search(
   converge_ari = NULL,
   coords = c(1, 2),
   age = 3,
+  space_clustmethod = "kmedoids",
   crs = 4326,
   hull_convex_ratio = 0,
   random_start = FALSE,
@@ -23,7 +24,8 @@ blob_search(
   space_distmethod = NULL,
   w_knn = NULL,
   l_normalise = NULL,
-  beta_par = NULL
+  beta_par = NULL,
+  weights = NULL
 )
 }
 \arguments{
@@ -41,9 +43,11 @@ blob_search(
 
 \item{age}{a string or numeric value indicating the column of age. Default is the third column.}
 
+\item{space_clustmethod}{a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".}
+
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
 
-\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.}
+\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.5.}
 
 \item{random_start}{a Boolean to randomise starting cluster members. Default is FALSE.}
 
@@ -53,17 +57,19 @@ blob_search(
 
 \item{max_na}{a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.}
 
-\item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
+\item{space_kmat}{a kernel matrix computed from the spatial distance matrix. Default is NULL.}
 
-\item{space_distmat}{a spatial distance matrix, used when \code{space_kmat} is not supplied. Default is NULL.}
+\item{space_distmat}{a spatial distance matrix. Default is NULL.}
 
-\item{space_distmethod}{a string of the method, used when \code{space_kmat} and \code{space_distmat} are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.}
+\item{space_distmethod}{a string of the method, used when \code{space_kmat} and \code{space_distmat} are not specified. Either "geodesic" or "euclidean" is available. Default is "geodesic".}
 
 \item{w_knn}{an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with \code{\link[=compute_adjacency]{compute_adjacency()}} when \code{space_kmat} is not supplied. Default is 7.}
 
 \item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}} when \code{space_kmat} is not supplied. Default is TRUE.}
 
 \item{beta_par}{an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with \code{\link[=optim_beta]{optim_beta()}} when \code{space_kmat} is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.}
+
+\item{weights}{a numeric vector of weights for each data point. Default is NULL.}
 }
 \value{
 a numeric value of 1 if the search result is removed due to the presence of intersects,
@@ -82,7 +88,8 @@ or a list of the following objects if the search is meets the constraints,
 This function performs an iterative bi-objective local search algorithm to assign clusters for a given k and r.
 }
 \details{
-A diffusion kernel is applied to compute the distance to the centroid in space.
+When "kkmeans" method is specified, a diffusion kernel is applied to compute the distance to the centroid in space for
+kernel k-means clustering in space.
 See \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} for more details for converting a distance matrix to a kernel matrix.
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.

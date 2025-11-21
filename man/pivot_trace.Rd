@@ -4,10 +4,10 @@
 \alias{pivot_trace}
 \title{Pivot trace summary for plotting}
 \usage{
-pivot_trace(df)
+pivot_trace(data)
 }
 \arguments{
-\item{df}{a data frame of trace summary.}
+\item{data}{a data frame of trace summary.}
 }
 \value{
 a pivoted data frame of trace summary.

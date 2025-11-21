@@ -6,12 +6,14 @@
 \usage{
 plot_space(
   data,
-  clust,
-  space = c("earth", "euclidean"),
+  clust = NA,
+  space = "earth",
   coords = c(1, 2),
   crs = NULL,
+  alpha = 0.8,
   hull = FALSE,
-  hull_convex_ratio = 0.8
+  hull_convex_ratio = 0.8,
+  weights = NULL
 )
 }
 \arguments{
@@ -25,9 +27,13 @@ plot_space(
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and \code{\link[sf:st_transform]{sf::st_transform()}}. Default is NULL.}
 
+\item{alpha}{See <\code{\link[ggplot2:aes_colour_fill_alpha]{aes-colour-fill-alpha}}>.}
+
 \item{hull}{a Boolean. Should convex hulls be drawn? Default is FALSE.}
 
-\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.}
+\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.5.}
+
+\item{weights}{a numeric vector of weights for each data point, used to indicate them by data point colours. Default is NULL.}
 }
 \value{
 a \code{ggplot} object.

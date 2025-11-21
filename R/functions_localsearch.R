@@ -7,7 +7,7 @@
 #' This function computes and returns a distance matrix.
 #'
 #' @param data a numeric matrix or data frame.
-#' @param method a string of the method. It must be one of "geodesic" or "euclidean". Default is "geodesic".
+#' @param method a string of the method. Either "geodesic" or "euclidean" is available. Default is "geodesic".
 #'
 #' @details
 #' km is the unit when "geodesic" is specified.
@@ -33,13 +33,13 @@ compute_distmat <- function(data, method = "geodesic") {
 #' Compute adjacency matrix using local scaling
 #' 
 #' @description
-#' This function converts a distance matrix to a weighted adjacency matrix with local scaling.
+#' This function converts a distance matrix to a weighted adjacency matrix using a local scaling similarity function.
 #'
 #' @param distmat a distance matrix.
 #' @param knn an integer of the k-th nearest neighbour. Default is 7.
 #' 
 #' @details
-#' The local-scaling method follows Zelnik-Manor and Perona (2004). 
+#' The similarity function was proposed by Zelnik-Manor and Perona (2004). 
 #' Instead of using a fixed scaling parameter for all data points, a local scaling parameter is calculated for
 #' every point based on their \eqn{k^{th}} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
 #' See Zelnik-Manor and Perona (2004) for more information.
@@ -55,14 +55,12 @@ compute_adjacency <- function(distmat, knn = 7) {
   sorted_distmat <- t(apply(distmat[,-1], 1, sort)) # sort 
   # distance to the k-th nearest neighbour 
   knn_distmat <- apply(sorted_distmat, 1, function(x) {
-    eff_knn <- which(x == unique(x)[knn])[1]
-    d <- x[eff_knn]
-    # # if dist of knn is 0, find (k+7)nn
-    # while(d == 0) {
-    #   unique(d)
-    #   knn <- knn + knn
-    #   d <- x[knn]
-    # }
+    d <- x[knn]
+    # if dist of knn is 0, find (k+1)nn
+    while(d == 0) {
+      knn <- knn + 1
+      d <- x[knn]
+    }
     return(d)
   })
   V <- outer(knn_distmat, knn_distmat, "*") # a matrix of sigma_i * sigma_j
@@ -105,7 +103,7 @@ compute_laplacian <- function (W, normalise = TRUE) {
 #' Compute diffusion kernel
 #' 
 #' @description
-#' This function computes and returns a kernel matrix using a diffusion kernel as defined in Kondor and Lafferty (2002).
+#' This function computes and returns a kernel matrix using a diffusion kernel as defined by Kondor and Lafferty (2002).
 #'
 #' @param L a graph Laplacian.
 #' @param beta a numeric parameter controlling the diffusion rate. 
@@ -291,7 +289,7 @@ optim_beta <- function(L, k, par = 10) {
 #' 
 #' @param distmat a distance matrix.
 #' @param k an integer of the number of clusters.
-#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is NULL.
+#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7
 #' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
 #' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
@@ -325,10 +323,7 @@ optim_beta <- function(L, k, par = 10) {
 #' 
 #' @export
 
-distmat_to_kmat <- function(distmat, k, w_knn = NULL, l_normalise = TRUE, beta_par = 10) {
-  if (is.null(w_knn)){
-    w_knn <- nrow(distmat) / k
-  }
+distmat_to_kmat <- function(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par = 10) {
   # distance matrix to weighted adjaceny matrix
   W <- compute_adjacency(distmat = distmat, knn = w_knn)
   # compute normalised graph Laplacian
@@ -357,21 +352,22 @@ distmat_to_kmat <- function(distmat, k, w_knn = NULL, l_normalise = TRUE, beta_p
 #' 
 #' @export
 
-compute_kmat <- function(data, method = "geodesic", k, w_knn = NULL, l_normalise = TRUE, beta_par = 10) {
+compute_kmat <- function(data, method = "geodesic", k, w_knn = 7, l_normalise = TRUE, beta_par = 10) {
   distmat <- compute_distmat(data = data, method = method)
   kmat_out <- distmat_to_kmat(distmat = distmat, k = k , w_knn = w_knn, l_normalise = l_normalise, beta_par = beta_par)
   return(kmat_out)
 }
 
 #------------------------------------------------------------------------------#
-#' Compute spatial cost
+#' Compute diffusion kernel k-means spatial costs
 #'
 #' @description
-#' This function computes and returns the spatial costs of all points for a given cluster.
+#' This function computes and returns the spatial costs of all points for a given cluster using diffusion kernel k-means clustering.
 #'
 #' @param space_kmat a kernel matrix computed from the spatial distance matrix.
-#' @param clust_points a numeric vector of point indices in the targeted cluster.
+#' @param clust_points a numeric vector of point indices in the cluster.
 #' @param i an integer of a specific point index. Default is NULL.
+#' @param weights a numeric vector of weights for each data point. Default is NULL.
 #' 
 #' @references
 #' Dhillon, I. S., Guan, Y., & Kulis, B. (2004, August 22). Kernel k-means: spectral clustering and normalized cuts. Proceedings of the Tenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining. KDD04: ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, Seattle WA USA. https://doi.org/10.1145/1014052.1014118
@@ -382,7 +378,7 @@ compute_kmat <- function(data, method = "geodesic", k, w_knn = NULL, l_normalise
 #'
 #' @export
 
-compute_spacecost <- function(space_kmat, clust_points, i = NULL, weights = NULL) {
+compute_spacecost_kkmeans <- function(space_kmat, clust_points, i = NULL, weights = NULL) {
   w <- weights
   if (is.null(weights)) {
     w <- rep(1,nrow(space_kmat))
@@ -404,6 +400,73 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL, weights = NULL
 }
 
 #------------------------------------------------------------------------------#
+#' Compute k-medoids spatial costs
+#'
+#' @description
+#' This function computes and returns the spatial costs of all points for a given cluster using k-medoids clustering.
+#'
+#' @param space_distmat a spatial distance matrix.
+#' @param clust_points a numeric vector of point indices in the targeted cluster.
+#' @param i an integer of a specific point index. Default is NULL.
+#' @param weights a numeric vector of weights for each data point. Default is NULL.
+#' 
+#' @returns a numeric value or vector of the spatial cost(s) for a given cluster.
+#'
+#' @export
+
+compute_spacecost_kmedoids <- function(space_distmat, clust_points, i = NULL, weights = NULL) {
+  w <- weights
+  if (is.null(weights)) {
+    w <- rep(1,nrow(space_distmat))
+  }
+  
+  W <- outer(w, w, "+")/2
+  space_distmat <- W * space_distmat
+  
+  clust_mat <- space_distmat[clust_points, clust_points, drop = FALSE]
+  distsum <- rowSums(clust_mat)
+  medoid <- clust_points[which.min(distsum)[1]]
+  if (!is.null(i)) {
+    space_cost <- (space_distmat[i, medoid])^2
+  } else {
+    space_cost <- (space_distmat[ , medoid])^2
+  }
+  return(space_cost)
+}
+
+#------------------------------------------------------------------------------#
+#' Compute spatial costs
+#'
+#' @description
+#' This function computes and returns the spatial costs of all points for a given cluster.
+#'
+#' @param space_mat a spatial distance matrix or a kernel matrix computed from the spatial distance matrix.
+#' @param clust_points a numeric vector of point indices in the targeted cluster.
+#' @param method a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".
+#' @param i an integer of a specific point index. Default is NULL.
+#' @param weights a numeric vector of weights for each data point. Default is NULL.
+#' 
+#' @references
+#' Dhillon, I. S., Guan, Y., & Kulis, B. (2004, August 22). Kernel k-means: spectral clustering and normalized cuts. Proceedings of the Tenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining. KDD04: ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, Seattle WA USA. https://doi.org/10.1145/1014052.1014118
+#'
+#' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
+#' 
+#' @returns a numeric value or vector of the spatial cost(s) for a given cluster.
+#'
+#' @export
+
+compute_spacecost <- function(space_mat, clust_points, method = "kmedoids", i = NULL, weights = NULL) {
+  method <- match.arg(method, choices = c("kmedoids", "kkmeans"))
+  if (method == "kmedoids") {
+    space_cost <- compute_spacecost_kmedoids(space_distmat = space_mat, clust_points = clust_points, i = i)
+  }
+  if (method == "kkmeans") {
+    space_cost <- compute_spacecost_kkmeans(space_kmat = space_mat, clust_points = clust_points, i = i, weights = weights)
+  }
+  return(space_cost)
+}
+
+#------------------------------------------------------------------------------#
 #' Check for spatial intersects
 #' 
 #' @description
@@ -413,13 +476,13 @@ compute_spacecost <- function(space_kmat, clust_points, i = NULL, weights = NULL
 #' @param clust a numeric vector of the cluster assignment. Default is NULL.
 #' @param coords a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
-#' @param hull_convex_ratio a numeric value controlling the convexity of the hulls passed onto [sf::st_concave_hull()]. 1 returns convex and 0 maximally concave hulls. Default is 0.
+#' @param hull_convex_ratio a numeric value controlling the convexity of the hulls passed onto [sf::st_concave_hull()]. 1 returns convex and 0 maximally concave hulls. Default is 0.5.
 #'
 #' @returns TRUE or FALSE
 #'
 #' @export
 
-intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hull_convex_ratio = 0) {
+intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hull_convex_ratio = 0.5) {
   suppressMessages(sf::sf_use_s2(FALSE))
   data <- as.data.frame(data)
   #-------------------------------------------------------------------#
@@ -502,10 +565,12 @@ reorder_clust <- function(clust) {
 #'
 #' @inheritParams intersects_bool
 #' @inheritParams compute_spacecost
-#' @param age a string or numeric value indicating the column of age. Default is the third column. 
-#' @param space_distmat a spatial distance matrix, used when `space_kmat` is not supplied. Default is NULL.
-#' @param space_distmethod a string of the method, used when `space_kmat` and `space_distmat` are not specified. It must be one of "geodesic" or "euclidean". Default is NULL.
-#' @param w_knn an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with [compute_adjacency()] when `space_kmat` is not supplied.
+#' @param age a string or numeric value indicating the column of age. Default is the third column.
+#' @param space_clustmethod a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".
+#' @param space_distmat a spatial distance matrix. Default is NULL.
+#' @param space_kmat a kernel matrix computed from the spatial distance matrix. Default is NULL.
+#' @param space_distmethod a string of the method, used when `space_kmat` and `space_distmat` are not specified. Either "geodesic" or "euclidean" is available. Default is "geodesic".
+#' @param w_knn an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with [compute_adjacency()] when `space_kmat` is not supplied. Default is 7.
 #' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()] when `space_kmat` is not supplied. Default is TRUE.
 #' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with [optim_beta()] when `space_kmat` is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.
 #' 
@@ -523,6 +588,7 @@ eval_blobs <- function(data,
                        coords = c(1,2),
                        age = 3,
                        crs = 4326,
+                       space_clustmethod = "kmedoids",
                        hull_convex_ratio = 0,
                        space_kmat = NULL,
                        space_distmat = NULL,
@@ -531,6 +597,7 @@ eval_blobs <- function(data,
                        l_normalise = NULL,
                        beta_par = NULL,
                        weights = NULL) {
+  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
   # total number of points
   N <- nrow(data)
   # total number of clusters
@@ -538,12 +605,42 @@ eval_blobs <- function(data,
   # initialise empty vectors 
   space_ss <- time_range <- time_evenness <- n <- numeric(k)
   #-------------------------------------------------------------------#
-  # compute space_kmat
-  if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- 7
-    if (is.null(l_normalise)) l_normalise <- TRUE
-    if (is.null(beta_par)) beta_par <- 10
-    #-------------------------------------------------------------------#
+  if (space_clustmethod == "kkmeans") {
+    # compute space_kmat
+    if (is.null(space_kmat)) {
+      if (is.null(w_knn)) w_knn <- 7
+      if (is.null(l_normalise)) l_normalise <- TRUE
+      if (is.null(beta_par)) beta_par <- 10
+      #-------------------------------------------------------------------#
+      if(is.null(space_distmat)) {
+        if (is.null(space_distmethod)) {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+          message(paste0(space_distmethod," is used to compute space_distmat"))
+          } else {
+            space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+            }
+        space_kmat_out <- compute_kmat(data = data[, coords],
+                                       method = space_distmethod,
+                                       k = k,
+                                       w_knn = w_knn,
+                                       l_normalise = l_normalise,
+                                       beta_par = beta_par)
+        } else {
+          space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
+                                            k = k,
+                                            w_knn = w_knn,
+                                            l_normalise = l_normalise,
+                                            beta_par = beta_par)
+          }
+      space_kmat <- space_kmat_out$kmat
+      space_kmat_optim_out <- space_kmat_out$optim_out
+      } else {
+        space_kmat_optim_out <- NULL # As it is one of the returned items
+      }
+    space_mat <- space_kmat
+  }
+  
+  if (space_clustmethod == "kmedoids"){
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -551,22 +648,10 @@ eval_blobs <- function(data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_kmat_out <- compute_kmat(data = data[, coords],
-                                     method = space_distmethod,
-                                     k = k,
-                                     w_knn = w_knn,
-                                     l_normalise = l_normalise,
-                                     beta_par = beta_par)
-    } else {
-      space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                        k = k,
-                                        w_knn = w_knn,
-                                        l_normalise = l_normalise,
-                                        beta_par = beta_par)
+      space_distmat <- compute_distmat(data = data[, coords],
+                                   method = space_distmethod)
     }
-    space_kmat <- space_kmat_out$kmat
-    space_kmat_optim_out <- space_kmat_out$optim_out
-  } else {
+    space_mat <- space_distmat
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
   #-------------------------------------------------------------------#
@@ -577,9 +662,8 @@ eval_blobs <- function(data,
     data_k <- subset(data, data$clust == j)
     #-------------------------------------------------------------------#
     # spatial objective
-    # kernel k means cost function
-    space_ss[j] <- sum(compute_spacecost(space_kmat = space_kmat, clust_points = clust_points,
-                                         i = NULL, weights = weights)[clust_points])
+    space_ss[j] <- sum(compute_spacecost(space_mat = space_mat, clust_points = clust_points,
+                                         i = NULL, method = space_clustmethod, weights = weights)[clust_points])
     #-------------------------------------------------------------------#
     # temporal objectives
     time_range[j] <- max(data_k[ , age], na.rm = T) - min(data_k[ ,age], na.rm = T)
@@ -639,7 +723,8 @@ eval_blobs <- function(data,
 #'
 #' @returns a data frame with assigned starting clusters as a column.
 
-start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
+start_blobs <- function(data, k, space_mat, method = "kmedoids", random_start = FALSE) {
+  method <- match.arg(method, choices = c("kmedoids", "kkmeans"))
   if (random_start == TRUE) {
     data <- as.data.frame(data)
     data$clust <- NA
@@ -662,21 +747,32 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
   # (just permute a bunch and pick the one with the least smallest distance)
   N <- 100
   mat <- matrix(, N, k)
-  max_similarity <- numeric(N)
+  min_dist <- numeric(N) ###########
   #-------------------------------------------------------------------#
   for(n in 1:N){
     i <- sort(sample(1:nrow(data), size = k)) # sample k points from the data, sort them 
     mat[n, ] <- i # store sorted index in the matrix by row
     cb <- utils::combn(k, 2) # all combinations of k chooses 2 by column
     NC <- ncol(cb) # NC number of combinations
-    similarities <- numeric(NC) # a vector of distances of NC long
-    for(c in 1:NC) similarities[c] <- space_kmat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
-    max_similarity[n] <- max(similarities) # find the maximum hence minimum separation
+    dist <- numeric(NC)
+    # similarities <- numeric(NC) # a vector of distances of NC long
+    for(c in 1:NC) dist[c] <- space_mat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
+    
+    if (method == "kmedoids") {
+      dist <- dist
+    }
+    
+    if (method == "kkmeans") {
+      dist <- -dist # larger k(x,y) means closer
+    }
+    
+    min_dist[n] <- min(dist)
+
   }
   #-------------------------------------------------------------------#
   # pick the set with largest minimum distance between two points to ensure maximum separation between k points;
   # pick the first one if two are tied 
-  start <- mat[which(max_similarity == min(max_similarity))[1], ]
+  start <- mat[which(min_dist == max(min_dist))[1], ]
   # Assign cluster memberships to the starting points
   data[start, "clust"] <- 1:k
   data <- as.data.frame(data)
@@ -712,7 +808,8 @@ start_blobs <- function(data, k, space_kmat, random_start = FALSE) {
 #'
 #' @returns a data frame with assigned clusters as a column.
 
-find_blobs <- function(data, k, r, space_kmat, age = 3, weights = NULL) {
+find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weights = NULL) {
+  method <- match.arg(method, choices = c("kmedoids", "kkmeans"))
   if (is.null(data$order)) stop("Did you forget to run start_blobs()?")
   #-------------------------------------------------------------------#
   # a bit faster to handle data as a matrix
@@ -732,7 +829,7 @@ find_blobs <- function(data, k, r, space_kmat, age = 3, weights = NULL) {
   #-------------------------------------------------------------------#
   # Reorder kmat to match the reordered data
   order <- data[ ,"order"]
-  space_kmat <- space_kmat[order, order]
+  space_mat <- space_mat[order, order]
   #-------------------------------------------------------------------#
   # Extract clust to make the code cleaner
   clust <- data[,"clust"]
@@ -754,9 +851,10 @@ find_blobs <- function(data, k, r, space_kmat, age = 3, weights = NULL) {
       # compute the spatial cost == j
       # calculate the distance to the centroid in Hilbert space
       # O(c^2) is unavoidable 
-      space_cost[j] <- compute_spacecost(space_kmat = space_kmat,
+      space_cost[j] <- compute_spacecost(space_mat = space_mat,
                                          clust_points = clust_points,
                                          i = i,
+                                         method = method,
                                          weights = weights)
       #-------------------------------------------------------------------#
       # compute the temporal cost
@@ -824,7 +922,8 @@ find_blobs <- function(data, k, r, space_kmat, age = 3, weights = NULL) {
 #' @param max_na a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.
 #'
 #' @details
-#' A diffusion kernel is applied to compute the distance to the centroid in space.
+#' When "kkmeans" method is specified, a diffusion kernel is applied to compute the distance to the centroid in space for
+#' kernel k-means clustering in space. 
 #' See [distmat_to_kmat()] for more details for converting a distance matrix to a kernel matrix.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
@@ -858,6 +957,7 @@ blob_search <- function(data,
                         converge_ari = NULL,
                         coords = c(1,2),
                         age = 3,
+                        space_clustmethod = "kmedoids",
                         crs = 4326,
                         hull_convex_ratio = 0,
                         random_start = FALSE,
@@ -871,12 +971,43 @@ blob_search <- function(data,
                         l_normalise = NULL,
                         beta_par = NULL,
                         weights = NULL) {
-  # compute space_kmat
-  if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
-    if (is.null(l_normalise)) l_normalise <- TRUE
-    if (is.null(beta_par)) beta_par <- 10
-    #-------------------------------------------------------------------#
+  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  if (space_clustmethod == "kkmeans") {
+    # compute space_kmat
+    if (is.null(space_kmat)) {
+      if (is.null(w_knn)) w_knn <- 7
+      if (is.null(l_normalise)) l_normalise <- TRUE
+      if (is.null(beta_par)) beta_par <- 10
+      #-------------------------------------------------------------------#
+      if(is.null(space_distmat)) {
+        if (is.null(space_distmethod)) {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+          message(paste0(space_distmethod," is used to compute space_distmat"))
+        } else {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+        }
+        space_kmat_out <- compute_kmat(data = data[, coords],
+                                       method = space_distmethod,
+                                       k = k,
+                                       w_knn = w_knn,
+                                       l_normalise = l_normalise,
+                                       beta_par = beta_par)
+      } else {
+        space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
+                                          k = k,
+                                          w_knn = w_knn,
+                                          l_normalise = l_normalise,
+                                          beta_par = beta_par)
+      }
+      space_kmat <- space_kmat_out$kmat
+      space_kmat_optim_out <- space_kmat_out$optim_out
+    } else {
+      space_kmat_optim_out <- NULL # As it is one of the returned items
+    }
+    space_mat <- space_kmat
+  }
+  
+  if (space_clustmethod == "kmedoids"){
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -884,28 +1015,16 @@ blob_search <- function(data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_kmat_out <- compute_kmat(data = data[, coords],
-                                     method = space_distmethod,
-                                     k = k,
-                                     w_knn = w_knn,
-                                     l_normalise = l_normalise,
-                                     beta_par = beta_par)
-    } else {
-      space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                        k = k,
-                                        w_knn = w_knn,
-                                        l_normalise = l_normalise,
-                                        beta_par = beta_par)
+      space_distmat <- compute_distmat(data = data[, coords],
+                                       method = space_distmethod)
     }
-    space_kmat <- space_kmat_out$kmat
-    space_kmat_optim_out <- space_kmat_out$optim_out
-  } else {
+    space_mat <- space_distmat
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
   #-------------------------------------------------------------------#
   # search algorithm
   # start_blobs() to pick centroids
-  data <- start_blobs(data = data, k = k, space_kmat = space_kmat, random_start = random_start)
+  data <- start_blobs(data = data, k = k, space_mat = space_mat, method = space_clustmethod, random_start = random_start)
   #-------------------------------------------------------------------#
   # initialise counter counting find_blobs()
   t <- 0
@@ -916,7 +1035,7 @@ blob_search <- function(data,
     data_old <- data
     #-------------------------------------------------------------------#
     # find_blobs()
-    data <- find_blobs(data = data, k = k, r = r, age = age, space_kmat = space_kmat, weights = weights)
+    data <- find_blobs(data = data, k = k, r = r, age = age, space_mat = space_mat, method = space_clustmethod, weights = weights)
     #-------------------------------------------------------------------#
     # count find_blobs() executed
     t <- t + 1
@@ -932,7 +1051,9 @@ blob_search <- function(data,
                              age = age,
                              crs = crs,
                              hull_convex_ratio = hull_convex_ratio,
+                             space_distmat = space_distmat,
                              space_kmat = space_kmat,
+                             space_clustmethod = space_clustmethod,
                              weights = weights)
       clust_below_size <- eval_out$clust_below_size
       trace_newrow <- eval_out$summary
@@ -959,7 +1080,6 @@ blob_search <- function(data,
   if (filter_intersects == T) {
     intersects <- summary$intersects
     if (intersects == T) {
-      # message("At least two clusters intersect. Return NULL.")  
       return(1)
     }
   }
@@ -984,7 +1104,9 @@ blob_search <- function(data,
                                      age = age,
                                      crs = crs,
                                      hull_convex_ratio = hull_convex_ratio,
+                                     space_distmat = space_distmat,
                                      space_kmat = space_kmat,
+                                     space_clustmethod = space_clustmethod,
                                      weights = weights)
       updated_cols <- intersect(names(summary), names(eval_out_updated$summary))
       summary[ , updated_cols] <- eval_out_updated$summary[ , updated_cols]
@@ -1147,8 +1269,12 @@ convert_to_pop <- function(blob_list) {
   # extract each element and add a column to indicate the run
   pop <- do.call(rbind, pop) 
   data_list <- lapply(seq_along(pop[, "data"]), function (i) cbind(pop[, "data"][[i]], run = i))
-  summary_list <- lapply(seq_along(pop[, "summary"]), function (i) cbind(pop[, "summary"][[i]], run = i))
-  trace_list <- lapply(seq_along(pop[, "trace"]), function (i) cbind(pop[, "trace"][[i]], run = i))
+  summary_list <- lapply(seq_along(pop[, "summary"]), function (i) {
+    if (!is.null(pop[, "summary"][[i]])) { cbind(pop[, "summary"][[i]], run = i) }
+  })
+  trace_list <- lapply(seq_along(pop[, "trace"]), function (i) {
+    if (!is.null(pop[, "trace"][[i]])) { cbind(pop[, "trace"][[i]], run = i) }
+  })
   #-------------------------------------------------------------------#
   # extract clust
   clust_list <- lapply(seq_along(data_list), function (i) data_list[[i]]$clust)
@@ -1162,7 +1288,7 @@ convert_to_pop <- function(blob_list) {
   filtered_dup <- 0
   if (!is.null(clust)) {
     summary$dup <- 0
-    # Here, clust <- do.call(rbind, clust_list) must return a matrix even if there is only one solution
+    # here, clust <- do.call(rbind, clust_list) must return a matrix even if there is only one solution
     if (nrow(clust) > 1) {
       dup <- find_dup(clust, ari = 1)
       if (length(dup$idx) > 0) {
@@ -1234,7 +1360,8 @@ convert_to_pop <- function(blob_list) {
 #' @param run an integer of the number of runs. Default is 100.
 #' 
 #' @details
-#' A diffusion kernel is applied to compute the distance to the centroid in space.
+#' When "kkmeans" method is specified, a diffusion kernel is applied to compute the distance to the centroid in space for
+#' kernel k-means clustering in space. 
 #' See [distmat_to_kmat()] for more details for converting a distance matrix to a kernel matrix.
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
@@ -1271,6 +1398,7 @@ blob_populate <- function(data,
                           converge_ari = NULL,
                           coords = c(1,2),
                           age = 3,
+                          space_clustmethod = "kmedoids",
                           crs = 4326,
                           hull_convex_ratio = 0,
                           random_start = FALSE,
@@ -1284,12 +1412,43 @@ blob_populate <- function(data,
                           l_normalise = NULL,
                           beta_par = NULL,
                           weights = NULL) {
-  # compute space_kmat
-  if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
-    if (is.null(l_normalise)) l_normalise <- TRUE
-    if (is.null(beta_par)) beta_par <- 10
-    #-------------------------------------------------------------------#
+  
+  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  if (space_clustmethod == "kkmeans") {
+    # compute space_kmat
+    if (is.null(space_kmat)) {
+      if (is.null(w_knn)) w_knn <- 7
+      if (is.null(l_normalise)) l_normalise <- TRUE
+      if (is.null(beta_par)) beta_par <- 10
+      #-------------------------------------------------------------------#
+      if(is.null(space_distmat)) {
+        if (is.null(space_distmethod)) {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+          message(paste0(space_distmethod," is used to compute space_distmat"))
+        } else {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+        }
+        space_kmat_out <- compute_kmat(data = data[, coords],
+                                       method = space_distmethod,
+                                       k = k,
+                                       w_knn = w_knn,
+                                       l_normalise = l_normalise,
+                                       beta_par = beta_par)
+      } else {
+        space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
+                                          k = k,
+                                          w_knn = w_knn,
+                                          l_normalise = l_normalise,
+                                          beta_par = beta_par)
+      }
+      space_kmat <- space_kmat_out$kmat
+      space_kmat_optim_out <- space_kmat_out$optim_out
+    } else {
+      space_kmat_optim_out <- NULL # As it is one of the returned items
+    }
+  }
+  
+  if (space_clustmethod == "kmedoids"){
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -1297,22 +1456,9 @@ blob_populate <- function(data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_kmat_out <- compute_kmat(data = data[, coords],
-                                     method = space_distmethod,
-                                     k = max(k),
-                                     w_knn = w_knn,
-                                     l_normalise = l_normalise,
-                                     beta_par = beta_par)
-    } else {
-      space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                        k = max(k),
-                                        w_knn = w_knn,
-                                        l_normalise = l_normalise,
-                                        beta_par = beta_par)
+      space_distmat <- compute_distmat(data = data[, coords],
+                                       method = space_distmethod)
     }
-    space_kmat <- space_kmat_out$kmat
-    space_kmat_optim_out <- space_kmat_out$optim_out
-  } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
   #-------------------------------------------------------------------#
@@ -1347,6 +1493,7 @@ blob_populate <- function(data,
                   converge_ari = converge_ari,
                   coords = coords,
                   age = age,
+                  space_clustmethod = space_clustmethod,
                   crs = crs,
                   hull_convex_ratio = hull_convex_ratio,
                   random_start = random_start,
@@ -1354,6 +1501,7 @@ blob_populate <- function(data,
                   filter_clustsize = filter_clustsize,
                   max_na = max_na,
                   space_kmat = space_kmat,
+                  space_distmat = space_distmat,
                   weights = weights) 
     }, future.seed = T)
     #-------------------------------------------------------------------#
@@ -1377,6 +1525,7 @@ blob_populate <- function(data,
                              converge_ari = converge_ari,
                              coords = coords,
                              age = age,
+                             space_clustmethod = space_clustmethod,
                              crs = crs,
                              hull_convex_ratio = hull_convex_ratio,
                              random_start = random_start,
@@ -1384,6 +1533,7 @@ blob_populate <- function(data,
                              filter_clustsize = filter_clustsize,
                              max_na = max_na,
                              space_kmat = space_kmat,
+                             space_distmat = space_distmat,
                              weights = weights),
           k = k
         )
@@ -1397,14 +1547,18 @@ blob_populate <- function(data,
         pop_list[[m]] <- append(pop_list[[m]], list(blob_list[[i]][["blob"]]))
       }
       #-------------------------------------------------------------------#
-      pop_list <- pop_list[-1] # as the loop starts at 2
+      pop_list <- pop_list[-(1:(min(k)-1))] # as the loop starts at 2 and minus k [2,min(k)]
       # convert to pop object for each k group
       pop_list <- lapply(pop_list, convert_to_pop) 
       #-------------------------------------------------------------------#
       # extract each element and add a column to indicate the initial k
       pop <- do.call(rbind, pop_list)
-      summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) cbind(pop[ , "summary"][[i]], k_o = i + 1))
-      trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) cbind(pop[ , "trace"][[i]], k_o = i + 1)) 
+      summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) {
+        if (!is.null(pop[, "summary"][[i]])) { cbind(pop[ , "summary"][[i]], k_o = i + min(k) - 1) }
+      })
+      trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) {
+        if (!is.null(pop[, "trace"][[i]])) { cbind(pop[ , "trace"][[i]], k_o = i + min(k) - 1) }
+      }) 
       clust_list <- pop[ ,"clust"]
       n_filtered_list <- pop[ , "n_filtered"]
       #-------------------------------------------------------------------#
@@ -1413,13 +1567,18 @@ blob_populate <- function(data,
       summary <- do.call(rbind, summary_list)
       trace <- do.call(rbind, trace_list)
       n_filtered <- do.call(rbind, n_filtered_list)
-      n_filtered <- cbind(k_o = 2:(nrow(n_filtered) + 1), n_filtered)
+      n_filtered <- cbind(k_o = min(k):max(k), n_filtered)
       #-------------------------------------------------------------------#
       # reindex the solutions
-      summary$idx <- NULL
-      summary$idx <- 1:nrow(summary)
-      trace$idx <- NULL
-      trace <- merge(trace, summary[, c("idx","k_o","run")], by = c("k_o","run"), all.x = TRUE)
+      if (!is.null(clust)) {
+        summary$idx <- NULL
+        summary$idx <- 1:nrow(summary)
+        trace$idx <- NULL
+        trace <- merge(trace, summary[, c("idx","k_o","run")], by = c("k_o","run"), all.x = TRUE)
+      } else {
+        summary <- NULL
+        trace <- NULL
+      }
       #-------------------------------------------------------------------#
       summary <- summary[, c("idx",
                              "k_o", "k", "r", "run",
@@ -1437,7 +1596,7 @@ blob_populate <- function(data,
                          "size_mean", "size_sd", "size_diff",
                          "intersects",
                          "iter", "ari")]
-
+      
       rownames(summary) <- NULL
       rownames(trace) <- NULL
       

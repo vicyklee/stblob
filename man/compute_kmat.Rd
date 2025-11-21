@@ -16,11 +16,11 @@ compute_kmat(
 \arguments{
 \item{data}{a numeric matrix or data frame.}
 
-\item{method}{a string of the method. It must be one of "geodesic" or "euclidean". Default is "geodesic".}
+\item{method}{a string of the method. Either "geodesic" or "euclidean" is available. Default is "geodesic".}
 
 \item{k}{an integer of the number of clusters.}
 
-\item{w_knn}{an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7.}
+\item{w_knn}{an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7}
 
 \item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE.}
 

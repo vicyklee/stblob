@@ -4,7 +4,7 @@
 \alias{find_blobs}
 \title{Assign clusters}
 \usage{
-find_blobs(data, k, r, space_kmat, age = 3)
+find_blobs(data, k, r, space_mat, age = 3, method = "kmedoids", weights = NULL)
 }
 \arguments{
 \item{data}{a data matrix or data frame.}
@@ -13,9 +13,13 @@ find_blobs(data, k, r, space_kmat, age = 3)
 
 \item{r}{an numeric value of the spatial relative weight. It must be \eqn{[0,1]}.}
 
-\item{space_kmat}{a kernel matrix computed from the spatial distance matrix.}
+\item{space_mat}{a spatial distance matrix or a kernel matrix computed from the spatial distance matrix.}
 
 \item{age}{a string or numeric value indicating the column of age. Default is the third column.}
+
+\item{method}{a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".}
+
+\item{weights}{a numeric vector of weights for each data point. Default is NULL.}
 }
 \value{
 a data frame with assigned clusters as a column.

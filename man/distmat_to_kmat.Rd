@@ -11,7 +11,7 @@ distmat_to_kmat(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par = 10)
 
 \item{k}{an integer of the number of clusters.}
 
-\item{w_knn}{an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7.}
+\item{w_knn}{an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto \code{\link[=compute_adjacency]{compute_adjacency()}}. Default is 7}
 
 \item{l_normalise}{a Boolean to normalise the graph Laplacian, passed onto \code{\link[=compute_laplacian]{compute_laplacian()}}. Default is TRUE.}
 
@@ -33,6 +33,8 @@ A graph is constructed from the weighted adjacency matrix, represented by a grap
 Then, it uses a diffusion kernel over the graph with optimised diffusion rate \eqn{\beta} to capture the global structure for kernel-based clustering (Kondor and Lafferty, 2002; Kondor and Vert, 2004).
 \eqn{\beta} is optimised by minimising the absolute difference between the number of clusters and the effective rank of the kernel matrix where the effective rank,
 which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
+
+\eqn{\frac{n}{k}} is used as the k-th nearest neighbour when \code{w_knn} is NULL for \eqn{n} samples and \eqn{k} clusters.
 }
 \references{
 Chung, F. R. (1997). Spectral graph theory (Vol. 92). American Mathematical Soc..

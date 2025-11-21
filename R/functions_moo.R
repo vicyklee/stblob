@@ -30,6 +30,7 @@ blob_populate_batch <- function(data,
                                 converge_ari = NULL,
                                 coords = c(1,2),
                                 age = 3,
+                                space_clustmethod = "kmedoids",
                                 crs = 4326,
                                 hull_convex_ratio = 0,
                                 random_start = FALSE,
@@ -43,12 +44,43 @@ blob_populate_batch <- function(data,
                                 l_normalise = NULL,
                                 beta_par = NULL,
                                 weights = NULL) {
-  # compute space_kmat
-  if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
-    if (is.null(l_normalise)) l_normalise <- TRUE
-    if (is.null(beta_par)) beta_par <- 10
-    #-------------------------------------------------------------------#
+  
+  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  if (space_clustmethod == "kkmeans") {
+    # compute space_kmat
+    if (is.null(space_kmat)) {
+      if (is.null(w_knn)) w_knn <- 7
+      if (is.null(l_normalise)) l_normalise <- TRUE
+      if (is.null(beta_par)) beta_par <- 10
+      #-------------------------------------------------------------------#
+      if(is.null(space_distmat)) {
+        if (is.null(space_distmethod)) {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+          message(paste0(space_distmethod," is used to compute space_distmat"))
+        } else {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+        }
+        space_kmat_out <- compute_kmat(data = data[, coords],
+                                       method = space_distmethod,
+                                       k = k,
+                                       w_knn = w_knn,
+                                       l_normalise = l_normalise,
+                                       beta_par = beta_par)
+      } else {
+        space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
+                                          k = k,
+                                          w_knn = w_knn,
+                                          l_normalise = l_normalise,
+                                          beta_par = beta_par)
+      }
+      space_kmat <- space_kmat_out$kmat
+      space_kmat_optim_out <- space_kmat_out$optim_out
+    } else {
+      space_kmat_optim_out <- NULL # As it is one of the returned items
+    }
+  }
+  
+  if (space_clustmethod == "kmedoids"){
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -56,22 +88,9 @@ blob_populate_batch <- function(data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_kmat_out <- compute_kmat(data = data[, coords],
-                                     method = space_distmethod,
-                                     k = max(k),
-                                     w_knn = w_knn,
-                                     l_normalise = l_normalise,
-                                     beta_par = beta_par)
-    } else {
-      space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                        k = max(k),
-                                        w_knn = w_knn,
-                                        l_normalise = l_normalise,
-                                        beta_par = beta_par)
+      space_distmat <- compute_distmat(data = data[, coords],
+                                       method = space_distmethod)
     }
-    space_kmat <- space_kmat_out$kmat
-    space_kmat_optim_out <- space_kmat_out$optim_out
-  } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
   #-------------------------------------------------------------------#
@@ -108,12 +127,14 @@ blob_populate_batch <- function(data,
                            converge_ari = converge_ari,
                            coords = coords,
                            age = age,
+                           space_clustmethod = space_clustmethod,
                            crs = crs,
                            hull_convex_ratio = hull_convex_ratio,
                            random_start = random_start,
                            filter_intersects = filter_intersects,
                            filter_clustsize = filter_clustsize,
                            max_na = max_na,
+                           space_distmat = space_distmat,
                            space_kmat = space_kmat,
                            weights = weights),
         batch = batch
@@ -174,12 +195,14 @@ blob_populate_batch <- function(data,
                              converge_ari = converge_ari,
                              coords = coords,
                              age = age,
+                             space_clustmethod = space_clustmethod,
                              crs = crs,
                              hull_convex_ratio = hull_convex_ratio,
                              random_start = random_start,
                              filter_intersects = filter_intersects,
                              filter_clustsize = filter_clustsize,
                              max_na = max_na,
+                             space_distmat = space_distmat,
                              space_kmat = space_kmat,
                              weights = weights),
           k = k,
@@ -208,13 +231,17 @@ blob_populate_batch <- function(data,
           # append to pop_list
           pop_list[[n]] <- append(pop_list[[n]], list(batch_list[[i]][[j]][["blob"]]))
         }
-        pop_list <- pop_list[-1] # as the loop starts at 2
+        pop_list <- pop_list[-(1:(min(k)-1))] # as the loop starts at 2
         pop_list <- lapply(pop_list, convert_to_pop)
         #-------------------------------------------------------------------#
         # extract each element and add a column to indicate the initial k
         pop <- do.call(rbind, pop_list)
-        summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) cbind(pop[ , "summary"][[i]], k_o = i + 1))
-        trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) cbind(pop[ , "trace"][[i]], k_o = i + 1)) 
+        summary_list <- lapply(seq_along(pop[ , "summary"]), function (i) {
+          if (!is.null(pop[ , "summary"][[i]])) { cbind(pop[ , "summary"][[i]], k_o = i + min(k) - 1) }
+        })
+        trace_list <- lapply(seq_along(pop[ , "trace"]), function (i) {
+          if (!is.null(pop[ , "trace"][[i]])) { cbind(pop[ , "trace"][[i]], k_o = i + min(k) - 1) }
+        }) 
         clust_list <- pop[ ,"clust"]
         n_filtered_list <- pop[ , "n_filtered"]
         #-------------------------------------------------------------------#
@@ -226,33 +253,39 @@ blob_populate_batch <- function(data,
         n_filtered <- cbind(k_o = 2:(nrow(n_filtered) + 1), n_filtered)
         #-------------------------------------------------------------------#
         # reindex the solutions
-        summary$idx <- NULL
-        summary$idx <- 1:nrow(summary)
-        trace$idx <- NULL
-        trace <- merge(trace, summary[, c("idx","k_o","run")], by = c("k_o","run"), all.x = TRUE)
-        summary$batch <- i
-        trace$batch <- i
-        summary <- summary[, c("idx",
-                               "batch",
-                               "k_o", "k", "r", "run",
-                               "space_wcss",
-                               "time_range_mean", "time_range_sd",
-                               "time_evenness_mean", "time_evenness_sd",
-                               "size_mean", "size_sd", "size_diff",
-                               "intersects", "n_removed",
-                               "iter", "ari", "dup")]
-        trace <- trace[, c("idx",
-                           "batch",
-                           "k_o", "k", "r", "run",
-                           "space_wcss",
-                           "time_range_mean", "time_range_sd",
-                           "time_evenness_mean", "time_evenness_sd",
-                           "size_mean", "size_sd", "size_diff",
-                           "intersects",
-                           "iter", "ari")]
-        
-        rownames(summary) <- NULL
-        rownames(trace) <- NULL
+        if (!is.null(clust)) {
+          summary$idx <- NULL
+          summary$idx <- 1:nrow(summary)
+          trace$idx <- NULL
+          trace <- merge(trace, summary[, c("idx","k_o","run")], by = c("k_o","run"), all.x = TRUE)
+          summary$batch <- i
+          trace$batch <- i
+          
+          summary <- summary[, c("idx",
+                                 "batch",
+                                 "k_o", "k", "r", "run",
+                                 "space_wcss",
+                                 "time_range_mean", "time_range_sd",
+                                 "time_evenness_mean", "time_evenness_sd",
+                                 "size_mean", "size_sd", "size_diff",
+                                 "intersects", "n_removed",
+                                 "iter", "ari", "dup")]
+          trace <- trace[, c("idx",
+                             "batch",
+                             "k_o", "k", "r", "run",
+                             "space_wcss",
+                             "time_range_mean", "time_range_sd",
+                             "time_evenness_mean", "time_evenness_sd",
+                             "size_mean", "size_sd", "size_diff",
+                             "intersects",
+                             "iter", "ari")]
+          
+          rownames(summary) <- NULL
+          rownames(trace) <- NULL
+        } else {
+          summary <- NULL
+          trace <- NULL
+        }
         #-------------------------------------------------------------------#
         pop <- list(clust = clust,
                     summary = summary,
@@ -345,8 +378,10 @@ combine_pop <- function(pop_a, pop_b) {
   pop$summary$idx <- 1:nrow(pop$summary)
   pop$trace$idx <- NULL # remove column for the new
   if("k_o" %in% names(pop$trace)) {
-    pop$trace <- merge(pop$trace, unique(pop$summary[ , c("idx","batch","k_o","run")]), by = c("batch","k_o","run"), all.x = TRUE)
-    pop$trace <- pop$trace[, c(length(pop$trace), 1:length(pop$trace)-1)]
+    if(!is.null(pop$clust)) {
+      pop$trace <- merge(pop$trace, unique(pop$summary[ , c("idx","batch","k_o","run")]), by = c("batch","k_o","run"), all.x = TRUE)
+      pop$trace <- pop$trace[, c(length(pop$trace), 1:length(pop$trace)-1)]
+    }
     #-------------------------------------------------------------------#
     # sum the filtered counts by k_o
     pop$n_filtered <- cbind(
@@ -355,8 +390,10 @@ combine_pop <- function(pop_a, pop_b) {
       )
     rownames(pop$n_filtered) <- NULL
   } else {
-    pop$trace <- merge(pop$trace, unique(pop$summary[ , c("idx","batch","run")]), by = c("batch","run"), all.x = TRUE)
-    pop$trace <- pop$trace[, c(length(pop$trace), 1:length(pop$trace)-1)]
+    if(!is.null(pop$clust)) {
+      pop$trace <- merge(pop$trace, unique(pop$summary[ , c("idx","batch","run")]), by = c("batch","run"), all.x = TRUE)
+      pop$trace <- pop$trace[, c(length(pop$trace), 1:length(pop$trace)-1)]
+    }
     #-------------------------------------------------------------------#
     # sum the filtered counts
     pop$n_filtered <- rowsum(x = pop$n_filtered, group = rep(1, nrow(pop$n_filtered))) # colSums can does the same but just want to keep it as a data frame without additional functions.
@@ -507,9 +544,8 @@ find_pareto <- function(pop, obj = NULL) {
 #' The quality indicators include IGD, IGD+ and hypervolume commonly used in MOO,
 #' computed using [moocore::igd()], [moocore::igd_plus()], and [moocore::hypervolume()].
 #' 
-#' The reference for IGD and IGD+ use the Pareto optimal solutions of all batches combined and
-#' the reference point for hypervolume uses \eqn{(r_1, r_2, ..., r_m)},
-#' where m is the number of objectives and \eqn{r_i = 1} for all \eqn{i}.
+#' The reference for IGD and IGD+ are the Pareto optimal solutions from the final cumulative batch and
+#' the reference point in hypervolume is \eqn{(1_m = (1,1,,1) \in \R^m)} for \eqn{m} objectives.
 #' 
 #' The lower and upper bounds for normalisation are obtained from all the solutions.
 #' 
@@ -545,6 +581,13 @@ eval_moo <- function(batch_list, obj) {
   for (i in 1:N) {
     if(i > 1) { pop <- suppressMessages(combine_pop(pop, batch_list[[i]])) } else {
       pop <- batch_list[[i]]
+    }
+    if (is.null(pop$clust)) {
+      pop$pareto_idx <- NULL
+      pop$moo_quality <- NULL
+      pop_moo <- pop
+      class(pop_moo) <- "pop_moo"
+      return(pop_moo)
     }
     pop_pareto <- find_pareto(pop, obj = obj_input)
     pareto_summary <- subset(pop_pareto$summary, pareto == 1)
@@ -712,6 +755,7 @@ blob_moo <- function (data,
                       converge_ari = NULL,
                       coords = c(1,2),
                       age = 3,
+                      space_clustmethod = "kmedoids",
                       crs = 4326,
                       hull_convex_ratio = 0,
                       random_start = FALSE,
@@ -728,12 +772,42 @@ blob_moo <- function (data,
                       pareto_similar_ari = NULL,
                       obj = c("space_wcss","-time_range_mean","-time_evenness_mean")) {
                       
-  # compute space_kmat
-  if (is.null(space_kmat)) {
-    if (is.null(w_knn)) w_knn <- nrow(data)/max(k)
-    if (is.null(l_normalise)) l_normalise <- TRUE
-    if (is.null(beta_par)) beta_par <- 10
-    
+  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  if (space_clustmethod == "kkmeans") {
+    # compute space_kmat
+    if (is.null(space_kmat)) {
+      if (is.null(w_knn)) w_knn <- 7
+      if (is.null(l_normalise)) l_normalise <- TRUE
+      if (is.null(beta_par)) beta_par <- 10
+      #-------------------------------------------------------------------#
+      if(is.null(space_distmat)) {
+        if (is.null(space_distmethod)) {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+          message(paste0(space_distmethod," is used to compute space_distmat"))
+        } else {
+          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
+        }
+        space_kmat_out <- compute_kmat(data = data[, coords],
+                                       method = space_distmethod,
+                                       k = k,
+                                       w_knn = w_knn,
+                                       l_normalise = l_normalise,
+                                       beta_par = beta_par)
+      } else {
+        space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
+                                          k = k,
+                                          w_knn = w_knn,
+                                          l_normalise = l_normalise,
+                                          beta_par = beta_par)
+      }
+      space_kmat <- space_kmat_out$kmat
+      space_kmat_optim_out <- space_kmat_out$optim_out
+    } else {
+      space_kmat_optim_out <- NULL # As it is one of the returned items
+    }
+  }
+  
+  if (space_clustmethod == "kmedoids"){
     if(is.null(space_distmat)) {
       if (is.null(space_distmethod)) {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
@@ -741,22 +815,9 @@ blob_moo <- function (data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_kmat_out <- compute_kmat(data = data[, coords],
-                                     method = space_distmethod,
-                                     k = max(k),
-                                     w_knn = w_knn,
-                                     l_normalise = l_normalise,
-                                     beta_par = beta_par)
-    } else {
-      space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                        k = max(k),
-                                        w_knn = w_knn,
-                                        l_normalise = l_normalise,
-                                        beta_par = beta_par)
+      space_distmat <- compute_distmat(data = data[, coords],
+                                       method = space_distmethod)
     }
-    space_kmat <- space_kmat_out$kmat
-    space_kmat_optim_out <- space_kmat_out$optim_out
-  } else {
     space_kmat_optim_out <- NULL # As it is one of the returned items
   }
   #-------------------------------------------------------------------#
@@ -770,12 +831,14 @@ blob_moo <- function (data,
                                     converge_ari = converge_ari,
                                     coords = coords,
                                     age = age,
+                                    space_clustmethod = space_clustmethod,
                                     crs = crs,
                                     hull_convex_ratio = hull_convex_ratio,
                                     random_start = random_start,
                                     filter_intersects = filter_intersects,
                                     filter_clustsize = filter_clustsize,
                                     max_na = max_na,
+                                    space_distmat = space_distmat,
                                     space_kmat = space_kmat,
                                     weights = weights)
   #-------------------------------------------------------------------#
@@ -784,7 +847,7 @@ blob_moo <- function (data,
   #-------------------------------------------------------------------#
   # if there are feasible solutions, there must be optimal solutions in the set.
   if (is.null(pop_moo$pareto_idx)) {
-    message("No assignment was found.")
+    warning("No solution was found.")
     return(NULL)
   }
   #-------------------------------------------------------------------#
@@ -795,3 +858,4 @@ blob_moo <- function (data,
   #-------------------------------------------------------------------#
   return(pop_moo)
 }
+

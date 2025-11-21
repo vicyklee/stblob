@@ -9,7 +9,7 @@ intersects_bool(
   clust = NULL,
   coords = c(1, 2),
   crs = 4326,
-  hull_convex_ratio = 0
+  hull_convex_ratio = 0.5
 )
 }
 \arguments{
@@ -21,7 +21,7 @@ intersects_bool(
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}}. Default is 4326.}
 
-\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.}
+\item{hull_convex_ratio}{a numeric value controlling the convexity of the hulls passed onto \code{\link[sf:geos_unary]{sf::st_concave_hull()}}. 1 returns convex and 0 maximally concave hulls. Default is 0.5.}
 }
 \value{
 TRUE or FALSE
