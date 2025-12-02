@@ -427,9 +427,9 @@ compute_spacecost_kmedoids <- function(space_distmat, clust_points, i = NULL, we
   distsum <- rowSums(clust_mat)
   medoid <- clust_points[which.min(distsum)[1]]
   if (!is.null(i)) {
-    space_cost <- (space_distmat[i, medoid])^2
+    space_cost <- (space_distmat[i, medoid])
   } else {
-    space_cost <- (space_distmat[ , medoid])^2
+    space_cost <- (space_distmat[ , medoid])
   }
   return(space_cost)
 }
@@ -603,7 +603,7 @@ eval_blobs <- function(data,
   # total number of clusters
   k <- length(unique(stats::na.omit(data$clust))) # NA is excluded
   # initialise empty vectors 
-  space_ss <- time_range <- time_evenness <- n <- numeric(k)
+  space_d <- time_range <- time_evenness <- n <- numeric(k)
   #-------------------------------------------------------------------#
   if (space_clustmethod == "kkmeans") {
     # compute space_kmat
@@ -662,7 +662,7 @@ eval_blobs <- function(data,
     data_k <- subset(data, data$clust == j)
     #-------------------------------------------------------------------#
     # spatial objective
-    space_ss[j] <- sum(compute_spacecost(space_mat = space_mat, clust_points = clust_points,
+    space_d[j] <- sum(compute_spacecost(space_mat = space_mat, clust_points = clust_points,
                                          i = NULL, method = space_clustmethod, weights = weights)[clust_points])
     #-------------------------------------------------------------------#
     # temporal objectives
@@ -674,7 +674,7 @@ eval_blobs <- function(data,
   }
   #-------------------------------------------------------------------#
   # calculate the summary statistics
-  space_wcss <- sum(space_ss)
+  space_wcd <- sum(space_d)
   time_range_mean <- mean(time_range, na.rm = TRUE)
   time_range_sd <- stats::sd(time_range, na.rm = TRUE)
   time_evenness_mean <- mean(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
@@ -693,7 +693,7 @@ eval_blobs <- function(data,
   #-------------------------------------------------------------------#
   # return a data frame of all the statistics
   summary <- data.frame(k = k,
-                        space_wcss = space_wcss,
+                        space_wcd = space_wcd,
                         time_range_mean = time_range_mean,
                         time_range_sd = time_range_sd,
                         time_evenness_mean = time_evenness_mean,
@@ -1132,14 +1132,14 @@ blob_search <- function(data,
   clust_below_size <- NULL
   #-------------------------------------------------------------------#
   summary <- summary[, c("k", "r",
-                         "space_wcss",
+                         "space_wcd",
                          "time_range_mean", "time_range_sd",
                          "time_evenness_mean", "time_evenness_sd",
                          "size_mean", "size_sd", "size_diff",
                          "intersects", "n_removed",
                          "iter", "ari")]
   trace <- trace[, c("k", "r",
-                     "space_wcss",
+                     "space_wcd",
                      "time_range_mean", "time_range_sd",
                      "time_evenness_mean", "time_evenness_sd",
                      "size_mean", "size_sd", "size_diff",
@@ -1318,7 +1318,7 @@ convert_to_pop <- function(blob_list) {
   #-------------------------------------------------------------------#
   summary <- summary[, c("idx",
                          "k", "r", "run",
-                         "space_wcss",
+                         "space_wcd",
                          "time_range_mean", "time_range_sd",
                          "time_evenness_mean", "time_evenness_sd",
                          "size_mean", "size_sd", "size_diff",
@@ -1327,7 +1327,7 @@ convert_to_pop <- function(blob_list) {
   
   trace <- trace[, c("idx",
                      "k", "r", "run",
-                     "space_wcss",
+                     "space_wcd",
                      "time_range_mean", "time_range_sd",
                      "time_evenness_mean", "time_evenness_sd",
                      "size_mean", "size_sd", "size_diff",
@@ -1582,7 +1582,7 @@ blob_populate <- function(data,
       #-------------------------------------------------------------------#
       summary <- summary[, c("idx",
                              "k_o", "k", "r", "run",
-                             "space_wcss",
+                             "space_wcd",
                              "time_range_mean", "time_range_sd",
                              "time_evenness_mean", "time_evenness_sd",
                              "size_mean", "size_sd", "size_diff",
@@ -1590,7 +1590,7 @@ blob_populate <- function(data,
                              "iter", "ari", "dup")]
       trace <- trace[, c("idx",
                          "k_o", "k", "r", "run",
-                         "space_wcss",
+                         "space_wcd",
                          "time_range_mean", "time_range_sd",
                          "time_evenness_mean", "time_evenness_sd",
                          "size_mean", "size_sd", "size_diff",

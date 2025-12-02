@@ -29,7 +29,7 @@ blob_moo(
   beta_par = NULL,
   weights = NULL,
   pareto_similar_ari = NULL,
-  obj = c("space_wcss", "-time_range_mean", "-time_evenness_mean")
+  obj = c("space_wcd", "-time_range_mean", "-time_evenness_mean")
 )
 }
 \arguments{
