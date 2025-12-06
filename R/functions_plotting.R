@@ -298,7 +298,7 @@ plot_space <- function(data,
 
 plot_time <- function (data, clust, age = 3) {
   data$clust <- as.factor(clust)
-  age_col <- names(data[,3])
+  age_col <- names(data)[age]
 
   begin <- 0.1
   end <- 0.8
