@@ -292,13 +292,17 @@ plot_space <- function(data,
 #' @description
 #' This function plots data in time
 #' @param data a data frame
-#' @param clust a numeric vector of cluster assignemnt.
+#' @param clust a numeric vector of cluster assignment.
 #' @param age a string or numeric value indicating the column of age. Default is the third column. 
 #' @export
 
 plot_time <- function (data, clust, age = 3) {
   data$clust <- as.factor(clust)
-  age_col <- names(data)[age]
+  if (is.numeric(age)){
+    age_col <- names(data)[age]
+  } else {
+    age_col <- age
+  }
 
   begin <- 0.1
   end <- 0.8
