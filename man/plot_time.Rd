@@ -9,7 +9,7 @@ plot_time(data, clust, age = 3)
 \arguments{
 \item{data}{a data frame}
 
-\item{clust}{a numeric vector of cluster assignemnt.}
+\item{clust}{a numeric vector of cluster assignment.}
 
 \item{age}{a string or numeric value indicating the column of age. Default is the third column.}
 }
