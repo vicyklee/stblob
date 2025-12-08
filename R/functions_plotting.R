@@ -191,7 +191,7 @@ plot_space <- function(data,
   if (space == "euclidean" & is.null(crs)) crs <- NA
   
   data$clust <- as.factor(clust)
-  pts <- sf::st_as_sf(data, coords = coords, crs = 4326)
+  pts <- sf::st_as_sf(data, coords = coords, crs = crs)
   if (!is.na(crs)) {
     pts <- sf::st_transform(pts, crs = crs)
     # Get bounding box of your data
