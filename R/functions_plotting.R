@@ -187,7 +187,7 @@ plot_space <- function(data,
                        weights = NULL) {
   
   space <- match.arg(space, choices = c("earth", "euclidean"))
-  if (space == "earth" & is.null(crs)) crs <- 4036
+  if (space == "earth" & is.null(crs)) crs <- 4326
   if (space == "euclidean" & is.null(crs)) crs <- NA
   
   data$clust <- as.factor(clust)
@@ -303,7 +303,7 @@ plot_time <- function (data, clust, age = 3) {
   } else {
     age_col <- age
   }
-
+  
   begin <- 0.1
   end <- 0.8
   p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[age_col]],
