@@ -46,6 +46,10 @@ blob_populate_batch <- function(data,
                                 weights = NULL) {
   
   space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  #-------------------------------------------------------------------#
+  # select the relevant columns
+  data <- data[,c(coords,age)]
+  #-------------------------------------------------------------------#
   if (space_clustmethod == "kkmeans") {
     # compute space_kmat
     if (is.null(space_kmat)) {
@@ -60,7 +64,7 @@ blob_populate_batch <- function(data,
         } else {
           space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
         }
-        space_kmat_out <- compute_kmat(data = data[, coords],
+        space_kmat_out <- compute_kmat(data = data[, c(1,2)],
                                        method = space_distmethod,
                                        k = k,
                                        w_knn = w_knn,
@@ -88,7 +92,7 @@ blob_populate_batch <- function(data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_distmat <- compute_distmat(data = data[, coords],
+      space_distmat <- compute_distmat(data = data[, c(1,2)],
                                        method = space_distmethod)
     }
     space_kmat_optim_out <- NULL # As it is one of the returned items
@@ -125,8 +129,8 @@ blob_populate_batch <- function(data,
                            r = r,
                            iter = iter,
                            converge_ari = converge_ari,
-                           coords = coords,
-                           age = age,
+                           coords = c(1,2),
+                           age = 3,
                            space_clustmethod = space_clustmethod,
                            crs = crs,
                            hull_convex_ratio = hull_convex_ratio,
@@ -193,8 +197,8 @@ blob_populate_batch <- function(data,
                              r = r,
                              iter = iter,
                              converge_ari = converge_ari,
-                             coords = coords,
-                             age = age,
+                             coords = c(1,2),
+                             age = 3,
                              space_clustmethod = space_clustmethod,
                              crs = crs,
                              hull_convex_ratio = hull_convex_ratio,
@@ -773,6 +777,10 @@ blob_moo <- function (data,
                       obj = c("space_wcd","-time_range_mean","-time_evenness_mean")) {
                       
   space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  #-------------------------------------------------------------------#
+  # select the relevant columns
+  data <- data[,c(coords,age)]
+  #-------------------------------------------------------------------#
   if (space_clustmethod == "kkmeans") {
     # compute space_kmat
     if (is.null(space_kmat)) {
@@ -787,7 +795,7 @@ blob_moo <- function (data,
         } else {
           space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
         }
-        space_kmat_out <- compute_kmat(data = data[, coords],
+        space_kmat_out <- compute_kmat(data = data[, c(1,2)],
                                        method = space_distmethod,
                                        k = k,
                                        w_knn = w_knn,
@@ -815,7 +823,7 @@ blob_moo <- function (data,
       } else {
         space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       }
-      space_distmat <- compute_distmat(data = data[, coords],
+      space_distmat <- compute_distmat(data = data[, c(1,2)],
                                        method = space_distmethod)
     }
     space_kmat_optim_out <- NULL # As it is one of the returned items
@@ -829,8 +837,8 @@ blob_moo <- function (data,
                                     run = run,
                                     batch = batch,
                                     converge_ari = converge_ari,
-                                    coords = coords,
-                                    age = age,
+                                    coords = c(1,2),
+                                    age = 3,
                                     space_clustmethod = space_clustmethod,
                                     crs = crs,
                                     hull_convex_ratio = hull_convex_ratio,
