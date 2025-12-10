@@ -975,7 +975,7 @@ blob_search <- function(data,
   space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
   #-------------------------------------------------------------------#
   # select the relevant columns
-  data <- data[,c(coords,age)]
+  data <- data[, c(coords,age)]
   #-------------------------------------------------------------------#
   if (space_clustmethod == "kkmeans") {
     # compute space_kmat
