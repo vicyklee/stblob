@@ -11,7 +11,7 @@ blob_moo(
   iter = 10,
   run = 100,
   batch = 5,
-  converge_ari = NULL,
+  converge_ari = 1,
   coords = c(1, 2),
   age = 3,
   space_clustmethod = "kmedoids",
@@ -46,7 +46,7 @@ They must be \eqn{[0,1]}. Default is c(0.5,1).}
 
 \item{batch}{an integer of the number of batches. Default is 5.}
 
-\item{converge_ari}{a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is NULL.}
+\item{converge_ari}{a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is 1.}
 
 \item{coords}{a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.}
 
