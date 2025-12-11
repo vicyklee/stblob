@@ -9,7 +9,7 @@ blob_search(
   k,
   r,
   iter = 10,
-  converge_ari = NULL,
+  converge_ari = 1,
   coords = c(1, 2),
   age = 3,
   space_clustmethod = "kmedoids",
@@ -37,7 +37,7 @@ blob_search(
 
 \item{iter}{an integer of the number of iterations. Default is 10.}
 
-\item{converge_ari}{a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is NULL.}
+\item{converge_ari}{a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is 1.}
 
 \item{coords}{a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.}
 
@@ -94,8 +94,8 @@ See \code{\link[=distmat_to_kmat]{distmat_to_kmat()}} for more details for conve
 
 Clusters are assigned in every iteration. It iterates until the set length or convergence.
 
-When \code{converge_ari} is specified, convergence is defined and activated when ARI between the latest and the previous search is
-above the specified threshold and at least three iterations are run.
+When \code{converge_ari} is specified, convergence between iterations is defined.
+The search will complete when ARI meets the threshold and least 3 iterations are run.
 
 The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 }
