@@ -15,12 +15,12 @@ Imports:
     magrittr,
     mclust,
     moocore,
-    mvtnorm,
     sf
 Suggests: 
     dplyr,
     ggplot2,
     ggridges,
+    mvtnorm,
     rlang,
     rnaturalearth,
     scales,
