@@ -916,7 +916,7 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
 #' @inheritParams find_blobs
 #' @inheritParams eval_blobs
 #' @param iter an integer of the number of iterations. Default is 10.
-#' @param converge_ari a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is NULL.
+#' @param converge_ari a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is 1.
 #' @param filter_intersects a Boolean to remove an assignment with intersects in space? Default is TRUE.
 #' @param filter_clustsize a Boolean to assign NA to clusters below the critical size. Default is TRUE.
 #' @param max_na a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.
@@ -928,8 +928,8 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
-#' When `converge_ari` is specified, convergence is defined and activated when ARI between the latest and the previous search is
-#' above the specified threshold and at least three iterations are run.
+#' When `converge_ari` is specified, convergence between iterations is defined.
+#' The search will complete when ARI meets the threshold and least 3 iterations are run.
 #'
 #' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 #'
@@ -954,7 +954,7 @@ blob_search <- function(data,
                         k,
                         r,
                         iter = 10,
-                        converge_ari = NULL,
+                        converge_ari = 1,
                         coords = c(1,2),
                         age = 3,
                         space_clustmethod = "kmedoids",
@@ -1371,8 +1371,8 @@ convert_to_pop <- function(blob_list) {
 #'
 #' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
 #'
-#' When `converge_ari` is specified, convergence is defined and activated when ARI between the latest and the previous search is
-#' above the specified threshold and at least three iterations are run.
+#' When `converge_ari` is specified, convergence between iterations is defined.
+#' The search will complete when ARI meets the threshold and least 3 iterations are run.
 #'
 #' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
 #' 
@@ -1400,7 +1400,7 @@ blob_populate <- function(data,
                           r = c(0.5,1),
                           iter = 10,
                           run = 100,
-                          converge_ari = NULL,
+                          converge_ari = 1,
                           coords = c(1,2),
                           age = 3,
                           space_clustmethod = "kmedoids",
