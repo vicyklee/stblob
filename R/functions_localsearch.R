@@ -864,6 +864,7 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
         time_cost[j] <- 0  # only i was in the cluster
       } else {
         time_cost[j] <- min(abs(data[i, age] - data[clust_points_tmp, age]))
+        # time_cost[j] <- max(abs(data[i, age] - data[clust_points_tmp, age]))
       }
     }
     #-------------------------------------------------------------------#
@@ -875,6 +876,7 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
     #-------------------------------------------------------------------#
     # weighted scalarising (into a single cost)
     cost <- space_cost_norm*r - time_cost_norm*(1-r)
+    # cost <- space_cost_norm*r + time_cost_norm*(1-r)
     #-------------------------------------------------------------------#
     # assign cluster
     # check if there are tied clusters
@@ -1439,13 +1441,13 @@ blob_populate <- function(data,
         }
         space_kmat_out <- compute_kmat(data = data[, c(1,2)],
                                        method = space_distmethod,
-                                       k = k,
+                                       k = max(k),
                                        w_knn = w_knn,
                                        l_normalise = l_normalise,
                                        beta_par = beta_par)
       } else {
         space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                          k = k,
+                                          k = max(k),
                                           w_knn = w_knn,
                                           l_normalise = l_normalise,
                                           beta_par = beta_par)
