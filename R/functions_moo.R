@@ -66,13 +66,13 @@ blob_populate_batch <- function(data,
         }
         space_kmat_out <- compute_kmat(data = data[, c(1,2)],
                                        method = space_distmethod,
-                                       k = k,
+                                       k = max(k),
                                        w_knn = w_knn,
                                        l_normalise = l_normalise,
                                        beta_par = beta_par)
       } else {
         space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                          k = k,
+                                          k = max(k),
                                           w_knn = w_knn,
                                           l_normalise = l_normalise,
                                           beta_par = beta_par)
@@ -797,13 +797,13 @@ blob_moo <- function (data,
         }
         space_kmat_out <- compute_kmat(data = data[, c(1,2)],
                                        method = space_distmethod,
-                                       k = k,
+                                       k = max(k),
                                        w_knn = w_knn,
                                        l_normalise = l_normalise,
                                        beta_par = beta_par)
       } else {
         space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                          k = k,
+                                          k = max(k),
                                           w_knn = w_knn,
                                           l_normalise = l_normalise,
                                           beta_par = beta_par)
