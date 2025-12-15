@@ -221,7 +221,7 @@ plot_space <- function(data,
     if (space == "euclidean") {
       if (!all(is.na(clust))) {
         p <- ggplot2::ggplot() +
-          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = .data[[colour]]))
+          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = clust))
       } else {
         p <- ggplot2::ggplot() +
           ggplot2::geom_sf(data = pts, alpha = alpha, colour = "blue")
@@ -233,7 +233,7 @@ plot_space <- function(data,
       if (!all(is.na(clust))) {
         p <- ggplot2::ggplot() +
           ggplot2::geom_sf(data = world, alpha = 0.2) +
-          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = .data[[colour]])) +
+          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = clust)) +
           ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
       } else {
         p <- ggplot2::ggplot() +
@@ -259,8 +259,8 @@ plot_space <- function(data,
     if (space == "euclidean") {
       p <- ggplot2::ggplot() +
         ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) +
-        ggplot2::scale_fill_viridis_d(option = "G", direction = -1,  begin = begin, end = end)
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) 
+        # ggplot2::scale_fill_viridis_d(option = "G", direction = -1,  begin = begin, end = end)
       
     } else if (space == "earth") {
       world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
@@ -269,7 +269,7 @@ plot_space <- function(data,
       p <- ggplot2::ggplot() +
         ggplot2::geom_sf(data = world, alpha = 0.2) +
         ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) +
+        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
         ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = crs)
     }
     p <- p +
