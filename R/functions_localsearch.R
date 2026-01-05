@@ -864,7 +864,6 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
         time_cost[j] <- 0  # only i was in the cluster
       } else {
         time_cost[j] <- min(abs(data[i, age] - data[clust_points_tmp, age]))
-        # time_cost[j] <- max(abs(data[i, age] - data[clust_points_tmp, age]))
       }
     }
     #-------------------------------------------------------------------#
