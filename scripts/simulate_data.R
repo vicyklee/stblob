@@ -30,7 +30,7 @@ age <- age <- c(seq(1,300,3),
                 seq(1,300,3))
 
 threeblobs2 <- cbind(space, age)
-threeblobs2 <- threeblobs[ , c(1,2,4,3)]
+threeblobs2 <- threeblobs2[ , c(1,2,4,3)]
 usethis::use_data(threeblobs2)
 
 #------------------------------------------------------------------------------#
