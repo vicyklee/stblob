@@ -235,7 +235,7 @@ blob_populate_batch <- function(data,
           # append to pop_list
           pop_list[[n]] <- append(pop_list[[n]], list(batch_list[[i]][[j]][["blob"]]))
         }
-        pop_list <- pop_list[-(1:(min(k)-1))] # as the loop starts at 2
+        pop_list <- pop_list[-(1:(min(k)-1))] # as the loop starts at min(k)
         pop_list <- lapply(pop_list, convert_to_pop)
         #-------------------------------------------------------------------#
         # extract each element and add a column to indicate the initial k
@@ -410,7 +410,9 @@ combine_pop <- function(pop_a, pop_b) {
       #-------------------------------------------------------------------#
       if (length(dup$idx) > 0) {
         # record the duplicate freq
-        pop$summary$dup[as.numeric(names(dup$freq))] <- pop$summary$dup[as.numeric(names(dup$freq))] + as.vector(dup$freq)
+        pop$summary$dup[as.numeric(names(dup$freq))] <- pop$summary$dup[as.numeric(names(dup$freq))] +
+          as.vector(dup$freq) + # add dup freq for the clust in this pop object
+          pop$summary$dup[dup$idx] # add dup freq for the previously recorded dup
         # filter the duplicates
         pop$clust <- pop$clust[-dup$idx, , drop = F]
         pop$summary <- pop$summary[-dup$idx, ]
@@ -860,7 +862,7 @@ blob_moo <- function (data,
   }
   #-------------------------------------------------------------------#
   # flag similar solutions on the Pareto front
-  if (!is.null(pareto_similar_ari)) {
+  if (!is.null(pareto_similar_ari) & pop_moo$pareto_idx > 1) {
     pop_moo <- find_pareto_similar(pop = pop_moo, ari = pareto_similar_ari)
   }
   #-------------------------------------------------------------------#
