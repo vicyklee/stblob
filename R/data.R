@@ -1,27 +1,14 @@
-#' Demo data A
+#' Demo data
 #'
 #' @format
 #' A data frame with 300 rows and 4 columns:
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
-#'   \item{age}{Randomly sampled age}
-#'   \item{clust}{True spatial cluster}
+#'   \item{age}{Ordered age for demomstration}
+#'   \item{clust}{Simulated spatial cluster}
 #' }
 #' @source This package
-"threeblobs_a"
-
-#' Demo data B
-#'
-#' @format
-#' A data frame with 300 rows and 4 columns:
-#' \describe{
-#'   \item{x, y}{Spatial coordinates of the original dataset}
-#'   \item{age}{Randomly sampled age}
-#'   \item{clust}{True spatial cluster}
-#' }
-#' @source This package
-"threeblobs_b"
-
+"threeblobs"
 
 #' "Jain" data
 #'
@@ -30,7 +17,7 @@
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
 #'   \item{age}{Randomly sampled age}
-#'   \item{clust}{True spatial cluster}
+#'   \item{clust}{Simulated spatial cluster}
 #' }
 #' @source <https://cs.joensuu.fi/sipu/datasets/>
 #' @references
@@ -46,7 +33,7 @@
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
 #'   \item{age}{Randomly sampled age}
-#'   \item{clust}{True spatial cluster}
+#'   \item{clust}{Simulated spatial cluster}
 #' }
 #' @source <https://cs.joensuu.fi/sipu/datasets/>
 #' @references
@@ -62,7 +49,7 @@
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
 #'   \item{age}{Randomly sampled age}
-#'   \item{clust}{True spatial cluster}
+#'   \item{clust}{Simulated spatial cluster}
 #' }
 #' @source <https://cs.joensuu.fi/sipu/datasets/>
 #' @references
@@ -78,7 +65,7 @@
 #' \describe{
 #'   \item{x, y}{Spatial coordinates of the original dataset}
 #'   \item{age}{Randomly sampled age}
-#'   \item{clust}{True spatial cluster}
+#'   \item{clust}{Simulated spatial cluster}
 #' }
 #' @source [factoextra::multishapes]
 "noisycircles"

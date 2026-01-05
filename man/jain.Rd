@@ -9,7 +9,7 @@ A data frame with 373 rows and 4 columns:
 \describe{
 \item{x, y}{Spatial coordinates of the original dataset}
 \item{age}{Randomly sampled age}
-\item{clust}{True spatial cluster}
+\item{clust}{Simulated spatial cluster}
 }
 }
 \source{
