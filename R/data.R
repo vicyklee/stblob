@@ -10,6 +10,19 @@
 #' @source This package
 "threeblobs"
 
+#' Demo data 2
+#'
+#' @format
+#' A data frame with 300 rows and 4 columns:
+#' \describe{
+#'   \item{x, y}{Spatial coordinates of the original dataset}
+#'   \item{age}{Ordered age for demomstration}
+#'   \item{clust}{Simulated spatial cluster}
+#' }
+#' @source This package
+"threeblobs2"
+
+
 #' "Jain" data
 #'
 #' @format

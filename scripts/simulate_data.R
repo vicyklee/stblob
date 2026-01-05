@@ -19,6 +19,20 @@ threeblobs <- cbind(space, age)
 threeblobs <- threeblobs[ , c(1,2,4,3)]
 usethis::use_data(threeblobs)
 
+set.seed(12)
+space <- gen_gaussian_data(n = 3,
+                           size = c(100, 100, 100),
+                           center = as.matrix(data.frame(x = c(-10,-5,10), y = c(-3,3,0))),
+                           sigma = matrix(c(2,0,0,2), nrow = 2))
+
+age <- age <- c(seq(1,300,3),
+                seq(1,300,3),
+                seq(1,300,3))
+
+threeblobs2 <- cbind(space, age)
+threeblobs2 <- threeblobs[ , c(1,2,4,3)]
+usethis::use_data(threeblobs2)
+
 #------------------------------------------------------------------------------#
 # Others ####
 #------------------------------------------------------------------------------#
