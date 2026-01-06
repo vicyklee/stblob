@@ -676,12 +676,12 @@ eval_blobs <- function(data,
   # calculate the summary statistics
   space_wcd <- sum(space_d)
   time_wcr <- mean(time_range, na.rm = TRUE)
-  time_wcr_sd <- stats::sd(time_range, na.rm = TRUE)
+  # time_wcr_sd <- stats::sd(time_range, na.rm = TRUE)
   time_wce <- mean(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
-  time_wce_sd <- stats::sd(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
-  size_diff <- max(n, na.rm = TRUE) - min(n, na.rm = TRUE)
-  size_mean <- mean(n, na.rm = TRUE)
-  size_sd <- stats::sd(n, na.rm = TRUE)
+  # time_wce_sd <- stats::sd(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
+  # size_diff <- max(n, na.rm = TRUE) - min(n, na.rm = TRUE)
+  # size_mean <- mean(n, na.rm = TRUE)
+  # size_sd <- stats::sd(n, na.rm = TRUE)
   #-------------------------------------------------------------------#
   # evaluate failed clust
   # n.points must be > N / k / 2
@@ -1137,20 +1137,8 @@ blob_search <- function(data,
   # 5. remove clust.below.size as filter has been applied so it is irrelevant to the downstream
   clust_below_size <- NULL
   #-------------------------------------------------------------------#
-  summary <- summary[, c("k", "r",
-                         "space_wcd",
-                         "time_wcr", "time_wcr_sd",
-                         "time_wce", "time_wce_sd",
-                         "size_mean", "size_sd", "size_diff",
-                         "intersects", "n_removed",
-                         "iter", "ari")]
-  trace <- trace[, c("k", "r",
-                     "space_wcd",
-                     "time_wcr", "time_wcr_sd",
-                     "time_wce", "time_wce_sd",
-                     "size_mean", "size_sd", "size_diff",
-                     "intersects",
-                     "iter", "ari")]
+  summary <- summary[, c("k", "r", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari")]
+  trace <- trace[, c("k", "r", "space_wcd", "time_wcr", "time_wce", "time_wce_sd", "intersects", "iter", "ari")]
   rownames(summary) <- NULL
   rownames(trace) <- NULL
   #-------------------------------------------------------------------#
@@ -1322,23 +1310,8 @@ convert_to_pop <- function(blob_list) {
                            k1 = filtered_k1,
                            dup = filtered_dup)
   #-------------------------------------------------------------------#
-  summary <- summary[, c("idx",
-                         "k", "r", "run",
-                         "space_wcd",
-                         "time_wcr", "time_wcr_sd",
-                         "time_wce", "time_wce_sd",
-                         "size_mean", "size_sd", "size_diff",
-                         "intersects", "n_removed",
-                         "iter", "ari", "dup")]
-  
-  trace <- trace[, c("idx",
-                     "k", "r", "run",
-                     "space_wcd",
-                     "time_wcr", "time_wcr_sd",
-                     "time_wce", "time_wce_sd",
-                     "size_mean", "size_sd", "size_diff",
-                     "intersects",
-                     "iter", "ari")]
+  summary <- summary[, c("idx", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
+  trace <- trace[, c("idx", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "time_wce_sd", "intersects", "iter", "ari")]
   
   rownames(summary) <- NULL
   rownames(trace) <- NULL
@@ -1590,22 +1563,8 @@ blob_populate <- function(data,
         trace <- NULL
       }
       #-------------------------------------------------------------------#
-      summary <- summary[, c("idx",
-                             "k_o", "k", "r", "run",
-                             "space_wcd",
-                             "time_wcr", "time_wcr_sd",
-                             "time_wce", "time_wce_sd",
-                             "size_mean", "size_sd", "size_diff",
-                             "intersects", "n_removed",
-                             "iter", "ari", "dup")]
-      trace <- trace[, c("idx",
-                         "k_o", "k", "r", "run",
-                         "space_wcd",
-                         "time_wcr", "time_wcr_sd",
-                         "time_wce", "time_wce_sd",
-                         "size_mean", "size_sd", "size_diff",
-                         "intersects",
-                         "iter", "ari")]
+      summary <- summary[, c("idx", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
+      trace <- trace[, c("idx", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "iter", "ari")]
       
       rownames(summary) <- NULL
       rownames(trace) <- NULL
