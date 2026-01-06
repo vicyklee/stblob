@@ -162,7 +162,7 @@ blob_populate_batch <- function(data,
       pop$trace$batch <- i
       #-------------------------------------------------------------------#
       pop$summary <- pop$summary[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
-      pop$trace <- pop$trace[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce","intersects", "iter", "ari")]
+      pop$trace <- pop$trace[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "iter", "ari")]
       #-------------------------------------------------------------------#
       pop$space_kmat_optim_out = space_kmat_optim_out
       #-------------------------------------------------------------------#
@@ -250,7 +250,7 @@ blob_populate_batch <- function(data,
           trace$batch <- i
           
           summary <- summary[, c("idx", "batch", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
-          trace <- trace[, c("idx", "batch", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "iter", "ari")]
+          trace <- trace[, c("idx", "batch", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "iter", "ari")]
           
           rownames(summary) <- NULL
           rownames(trace) <- NULL
