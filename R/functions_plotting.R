@@ -141,7 +141,7 @@ plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
     ggplot2::geom_line(ggplot2::aes(x = iter, y = value,
                                     group = interaction(!!!rlang::syms(group_cols), sep = "_"),
                                     colour = .data[[colour]]), alpha = alpha) +
-    ggplot2::facet_wrap(~stat, scales = "free", nrow = 2) +
+    ggplot2::facet_wrap(~stat, scales = "free", nrow = 1) +
     ggplot2::theme(axis.title.y = ggplot2::element_blank())  +
     ggplot2::scale_x_continuous(breaks = scales::pretty_breaks(n = max(unique(trace$iter))))
   
