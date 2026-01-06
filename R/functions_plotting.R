@@ -101,7 +101,7 @@ plot_objspace <- function (pop,
 #' @seealso [tidyr::pivot_longer()]
 
 pivot_trace <- function (data) {
-  stat <- c("space_wcd", "time_range_mean", "time_range_sd", "time_evenness_mean", "time_evenness_sd", "ari")
+  stat <- c("space_wcd", "time_wcr", "time_wce", "ari")
   
   optional_cols <- c("batch", "k_o")
   optional_cols <- optional_cols[optional_cols %in% names(data)]
