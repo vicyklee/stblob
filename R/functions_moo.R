@@ -862,7 +862,7 @@ blob_moo <- function (data,
   }
   #-------------------------------------------------------------------#
   # flag similar solutions on the Pareto front
-  if (!is.null(pareto_similar_ari) & pop_moo$pareto_idx > 1) {
+  if (!is.null(pareto_similar_ari) & length(pop_moo$pareto_idx) > 1) {
     pop_moo <- find_pareto_similar(pop = pop_moo, ari = pareto_similar_ari)
   }
   #-------------------------------------------------------------------#
