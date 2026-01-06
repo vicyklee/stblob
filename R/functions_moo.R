@@ -161,24 +161,8 @@ blob_populate_batch <- function(data,
       pop$summary$batch <- i
       pop$trace$batch <- i
       #-------------------------------------------------------------------#
-      pop$summary <- pop$summary[, c("idx",
-                                     "batch",
-                                     "k", "r", "run",
-                                     "space_wcd",
-                                     "time_wcr", "time_wcr_sd",
-                                     "time_wce", "time_wce_sd",
-                                     "size_mean", "size_sd", "size_diff",
-                                     "intersects", "n_removed",
-                                     "iter", "ari", "dup")]
-      pop$trace <- pop$trace[, c("idx",
-                                 "batch",
-                                 "k", "r", "run",
-                                 "space_wcd",
-                                 "time_wcr", "time_wcr_sd",
-                                 "time_wce", "time_wce_sd",
-                                 "size_mean", "size_sd", "size_diff",
-                                 "intersects",
-                                 "iter", "ari")]
+      pop$summary <- pop$summary[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
+      pop$trace <- pop$trace[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce","intersects", "iter", "ari")]
       #-------------------------------------------------------------------#
       pop$space_kmat_optim_out = space_kmat_optim_out
       #-------------------------------------------------------------------#
@@ -265,24 +249,8 @@ blob_populate_batch <- function(data,
           summary$batch <- i
           trace$batch <- i
           
-          summary <- summary[, c("idx",
-                                 "batch",
-                                 "k_o", "k", "r", "run",
-                                 "space_wcd",
-                                 "time_wcr", "time_wcr_sd",
-                                 "time_wce", "time_wce_sd",
-                                 "size_mean", "size_sd", "size_diff",
-                                 "intersects", "n_removed",
-                                 "iter", "ari", "dup")]
-          trace <- trace[, c("idx",
-                             "batch",
-                             "k_o", "k", "r", "run",
-                             "space_wcd",
-                             "time_wcr", "time_wcr_sd",
-                             "time_wce", "time_wce_sd",
-                             "size_mean", "size_sd", "size_diff",
-                             "intersects",
-                             "iter", "ari")]
+          summary <- summary[, c("idx", "batch", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
+          trace <- trace[, c("idx", "batch", "k_o", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "iter", "ari")]
           
           rownames(summary) <- NULL
           rownames(trace) <- NULL
