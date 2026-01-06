@@ -48,7 +48,7 @@ plot_objspace <- function (pop,
   
   objspace <- pop$summary %>%
     dplyr::select(c(dplyr::all_of(obj), dplyr::all_of(colour_cols))) %>%
-    dplyr::mutate(pareto = as.factor(pareto),
+    dplyr::mutate(pareto = factor(pareto, levels=c("1","0")),
                   batch = as.factor(batch),
                   k_o = as.factor(k_o))
   
@@ -82,7 +82,7 @@ plot_objspace <- function (pop,
     p <- p + ggplot2::scale_color_viridis_d(option = "D", direction = -1, end = 0.95) 
   }
   if (colour == "pareto") {
-    p <- p + ggplot2::scale_colour_manual(values = c("grey","#95c36e"))
+    p <- p + ggplot2::scale_colour_manual(values = c("#95c36e", "grey"))
   }
   
   if (normalise == TRUE) {
