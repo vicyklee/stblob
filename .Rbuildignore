@@ -3,3 +3,5 @@
 ^LICENSE\.md$
 ^scripts$
 ^data_paper$
+^figures$
+^output$
