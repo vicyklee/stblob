@@ -600,7 +600,7 @@ eval_moo <- function(batch_list, obj) {
   
   hv <- vapply(1:N,
                function(i)
-                 moocore::hypervolume(x = pareto_objspace_list[[i]], reference = rep(1, n_obj)),
+                 moocore::hypervolume(x = pareto_objspace_list[[i]], reference = rep(1.1, n_obj)), # 1.1 such that it would not become 0
                numeric(1))
   
   igd <- append(NA, igd)
