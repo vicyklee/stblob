@@ -50,7 +50,7 @@ rsconnect/
 .DS_Store
 
 # figures for publication
-figures/
+paper/figures/
 
 # output for publication
-output/
+paper/output/

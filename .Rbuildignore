@@ -1,7 +1,4 @@
 ^stblob\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
-^scripts$
-^data_paper$
-^figures$
-^output$
+^paper$
