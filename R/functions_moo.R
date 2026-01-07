@@ -238,7 +238,7 @@ blob_populate_batch <- function(data,
         summary <- do.call(rbind, summary_list)
         trace <- do.call(rbind, trace_list)
         n_filtered <- do.call(rbind, n_filtered_list)
-        n_filtered <- cbind(k_o = 2:(nrow(n_filtered) + 1), n_filtered)
+        n_filtered <- cbind(k_o = min(k):max(k), n_filtered)
         #-------------------------------------------------------------------#
         # reindex the solutions
         if (!is.null(clust)) {
@@ -333,12 +333,12 @@ combine_pop <- function(pop_a, pop_b) {
   # if both pop is !NULL
   # index the batch
   # check if batch is a column in the output
-  if (is.null(pop_a$summary$batch)) {
+  if (!is.null(pop_a$summary) & is.null(pop_a$summary$batch)) {
     pop_a$summary$batch <- 1
     pop_a$trace$batch <- 1
   }
   #-------------------------------------------------------------------#
-  if (is.null(pop_b$summary$batch)) {
+  if (!is.null(pop_b$summary) & is.null(pop_b$summary$batch)) {
     pop_b$summary$batch <- max(pop_a$summary$batch) + 1
     pop_b$trace$batch <- max(pop_a$trace$batch) + 1
   }
@@ -744,7 +744,7 @@ blob_moo <- function (data,
                       beta_par = NULL,
                       weights = NULL,
                       pareto_similar_ari = NULL,
-                      obj = c("space_wcd","-time_wcr","-time_wce")) {
+                      obj = c("space_wcd","-time_wcr","-time_wce", "n_removed")) {
                       
   space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
   #-------------------------------------------------------------------#
