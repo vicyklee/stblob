@@ -9,6 +9,7 @@ plot_objspace(
   obj,
   colour = c("r", "batch", "k_o", "pareto"),
   normalise = TRUE,
+  size = 1,
   alpha = 0.8
 )
 }
@@ -20,6 +21,8 @@ plot_objspace(
 \item{colour}{a string of the attribute to be coloured. It must be either "pareto", "r", "batch" or "k_o".}
 
 \item{normalise}{a Boolen. Should values of objectives be normalised? Default is TRUE.}
+
+\item{size}{size for \code{\link[ggplot2:geom_point]{ggplot2::geom_point()}}.}
 
 \item{alpha}{See <\code{\link[ggplot2:aes_colour_fill_alpha]{aes-colour-fill-alpha}}>.}
 }
