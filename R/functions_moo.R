@@ -158,13 +158,25 @@ blob_populate_batch <- function(data,
     for (i in 1:batch) {
       blob_list <- batch_list[[i]]
       pop <- convert_to_pop(blob_list)
-      pop$summary$batch <- i
-      pop$trace$batch <- i
+      
       #-------------------------------------------------------------------#
-      pop$summary <- pop$summary[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
-      pop$trace <- pop$trace[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "iter", "ari")]
+      # reindex the solutions
+      if (!is.null(pop$clust)) {
+        pop$summary$idx <- NULL
+        pop$summary$idx <- 1:nrow(pop$summary)
+        pop$trace$idx <- NULL
+        pop$trace <- merge(pop$trace, pop$summary[, c("idx","run")], by = "run", all.x = TRUE)
+        pop$summary$batch <- i
+        pop$trace$batch <- i
+        
+        pop$summary <- pop$summary[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "intersects", "n_removed", "iter", "ari", "dup")]
+        pop$trace <- pop$trace[, c("idx", "batch", "k", "r", "run", "space_wcd", "time_wcr", "time_wce", "iter", "ari")]
+        
+        rownames(pop$summary) <- NULL
+        rownames(pop$trace) <- NULL
+      }
       #-------------------------------------------------------------------#
-      pop$space_kmat_optim_out = space_kmat_optim_out
+      pop$space_kmat_optim_out <- space_kmat_optim_out
       #-------------------------------------------------------------------#
       class(pop) <- "pop"
       batch_list[[i]] <- pop
