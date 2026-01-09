@@ -10,6 +10,7 @@ plot_space(
   space = "earth",
   coords = c(1, 2),
   crs = NULL,
+  size = 1,
   alpha = 0.8,
   hull = FALSE,
   hull_convex_ratio = 0.8,
@@ -26,6 +27,8 @@ plot_space(
 \item{coords}{a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.}
 
 \item{crs}{a numeric value of the Coordinate Reference System passed on to \code{\link[sf:st_as_sf]{sf::st_as_sf()}} and \code{\link[sf:st_transform]{sf::st_transform()}}. Default is NULL.}
+
+\item{size}{size for \code{\link[ggplot2:geom_point]{ggplot2::geom_point()}}.}
 
 \item{alpha}{See <\code{\link[ggplot2:aes_colour_fill_alpha]{aes-colour-fill-alpha}}>.}
 
