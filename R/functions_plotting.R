@@ -27,6 +27,7 @@ save_pdf <- function(p, file, width, height, ...) {
 #' @param obj a string vector of length 2 that indicates the objectives.
 #' @param colour a string of the attribute to be coloured. It must be either "pareto", "r", "batch" or "k_o".
 #' @param normalise a Boolen. Should values of objectives be normalised? Default is TRUE.
+#' @param size size for [ggplot2::geom_point()].
 #' @param alpha See <[`aes-colour-fill-alpha`][ggplot2::aes_colour_fill_alpha()]>.
 #' @return a `ggplot` object.
 #' @export
@@ -35,11 +36,14 @@ plot_objspace <- function (pop,
                            obj,
                            colour = c("r", "batch", "k_o", "pareto"),
                            normalise = TRUE,
+                           size= 1,
                            alpha = 0.8) {
-
+  
   # check for input
   colour <- match.arg(colour)
-  colour_cols <- names(pop$summary)[names(pop$summary) %in% c("r", "batch", "k_o", "pareto")]
+  if(!colour %in%  names(pop$summary)) {
+    stop("colour option is not available for your input.")
+  }
   
   parse_obj_out <- parse_obj(obj)
   signed_obj <- obj
@@ -47,10 +51,17 @@ plot_objspace <- function (pop,
   maximise_obj_idx <- parse_obj_out$maximise_obj_idx
   
   objspace <- pop$summary %>%
-    dplyr::select(c(dplyr::all_of(obj), dplyr::all_of(colour_cols))) %>%
-    dplyr::mutate(pareto = factor(pareto, levels=c("1","0")),
-                  batch = as.factor(batch),
-                  k_o = as.factor(k_o))
+    dplyr::select(c(dplyr::all_of(obj), dplyr::all_of(colour)))
+  
+  if (colour == "batch") {
+    objspace <- objspace %>% dplyr::mutate(batch = as.factor(batch))
+  }
+  if (colour == "k_o") {
+    objspace <- objspace %>% dplyr::mutate(k_o = as.factor(k_o))
+  }
+  if (colour == "pareto") {
+    objspace <- objspace %>% dplyr::mutate(pareto = factor(pareto, levels=c("1","0")))
+  }
   
   if(length(parse_obj_out$maximise_obj_idx) > 0) {
     objspace <- objspace %>%
@@ -70,7 +81,7 @@ plot_objspace <- function (pop,
     ggplot2::geom_point(ggplot2::aes(x = .data[[signed_obj[1]]],
                                      y = .data[[signed_obj[2]]],
                                      colour = .data[[colour]]),
-                        alpha = alpha)
+                        size = size, alpha = alpha)
   
   if (colour == "r") {
     p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, end = 0.8)
@@ -142,8 +153,9 @@ plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
                                     group = interaction(!!!rlang::syms(group_cols), sep = "_"),
                                     colour = .data[[colour]]), alpha = alpha) +
     ggplot2::facet_wrap(~stat, scales = "free", nrow = 1) +
-    ggplot2::theme(axis.title.y = ggplot2::element_blank())  +
-    ggplot2::scale_x_continuous(breaks = scales::pretty_breaks(n = max(unique(trace$iter))))
+    ggplot2::theme(axis.title.y = ggplot2::element_blank()) +
+    # ggplot2::scale_x_continuous(breaks = scales::pretty_breaks()) +
+    ggplot2::xlab("iteration")
   
   if (colour == "r") {
     p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, end = 0.8)
@@ -169,6 +181,7 @@ plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
 #' @param coords a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()] and [sf::st_transform()]. Default is NULL.
 #' @param hull a Boolean. Should convex hulls be drawn? Default is FALSE.
+#' @param size size for [ggplot2::geom_point()].
 #' @param alpha See <[`aes-colour-fill-alpha`][ggplot2::aes_colour_fill_alpha()]>.
 #' @param weights a numeric vector of weights for each data point, used to indicate them by data point colours. Default is NULL.
 #' @inheritParams intersects_bool
@@ -181,6 +194,7 @@ plot_space <- function(data,
                        space = "earth",
                        coords = c(1,2),
                        crs = NULL,
+                       size = 1,
                        alpha = 0.8,
                        hull = FALSE,
                        hull_convex_ratio = 0.8,
@@ -221,10 +235,10 @@ plot_space <- function(data,
     if (space == "euclidean") {
       if (!all(is.na(clust))) {
         p <- ggplot2::ggplot() +
-          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = clust))
+          ggplot2::geom_sf(data = pts, size = size, alpha = alpha, ggplot2::aes(colour = clust))
       } else {
         p <- ggplot2::ggplot() +
-          ggplot2::geom_sf(data = pts, alpha = alpha, colour = "blue")
+          ggplot2::geom_sf(data = pts, size = size, alpha = alpha, colour = "blue")
       }
       
     } else if (space == "earth") {
@@ -233,12 +247,12 @@ plot_space <- function(data,
       if (!all(is.na(clust))) {
         p <- ggplot2::ggplot() +
           ggplot2::geom_sf(data = world, alpha = 0.2) +
-          ggplot2::geom_sf(data = pts, alpha = alpha, ggplot2::aes(colour = clust)) +
+          ggplot2::geom_sf(data = pts, size = size, alpha = alpha, ggplot2::aes(colour = clust)) +
           ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
       } else {
         p <- ggplot2::ggplot() +
           ggplot2::geom_sf(data = world, alpha = 0.2) +
-          ggplot2::geom_sf(data = pts, alpha = alpha, colour = "blue") +
+          ggplot2::geom_sf(data = pts, size = size, alpha = alpha, colour = "blue") +
           ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
       }
     }
@@ -259,7 +273,7 @@ plot_space <- function(data,
     if (space == "euclidean") {
       p <- ggplot2::ggplot() +
         ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) 
+        ggplot2::geom_sf(data = pts, size = size, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) 
         # ggplot2::scale_fill_viridis_d(option = "G", direction = -1,  begin = begin, end = end)
       
     } else if (space == "earth") {
@@ -269,7 +283,7 @@ plot_space <- function(data,
       p <- ggplot2::ggplot() +
         ggplot2::geom_sf(data = world, alpha = 0.2) +
         ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
-        ggplot2::geom_sf(data = pts, alpha = 0.8, ggplot2::aes(colour = clust)) +
+        ggplot2::geom_sf(data = pts, size = size, alpha = 0.8, ggplot2::aes(colour = clust)) +
         ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = crs)
     }
     p <- p +
@@ -337,6 +351,6 @@ plot_mooquality <- function(pop_moo, indicator = c("igd", "igd_plus", "hv")) {
   indicator <- match.arg(indicator)
   moo_quality <- cbind(batch = as.integer(1:nrow(pop_moo$moo_quality)), pop_moo$moo_quality)
   ggplot2::ggplot(moo_quality) +
-    ggplot2::geom_line(ggplot2::aes(x = batch, y = .data[[indicator]]), colour = "#5a97c1") +
-    ggplot2::scale_x_continuous(breaks = scales::pretty_breaks())
+    ggplot2::geom_line(ggplot2::aes(x = batch, y = .data[[indicator]]), colour = "#5a97c1")
+    # ggplot2::scale_x_continuous(breaks = scales::pretty_breaks())
 }
