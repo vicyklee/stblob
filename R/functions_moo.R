@@ -252,6 +252,36 @@ blob_populate_batch <- function(data,
         n_filtered <- do.call(rbind, n_filtered_list)
         n_filtered <- cbind(k_o = min(k):max(k), n_filtered)
         #-------------------------------------------------------------------#
+        # there might be duplicates after filtering for clustsize from different k_o 
+        if (!is.null(clust)) {
+          # here, clust <- do.call(rbind, clust_list) must return a matrix even if there is only one solution
+          if (nrow(clust) > 1) {
+            dup <- find_dup(clust, ari = 1)
+            if (length(dup$idx) > 0) {
+              #-------------------------------------------------------------------#
+              # record the duplicate freq
+              summary$dup[as.numeric(names(dup$freq))] <- summary$dup[as.numeric(names(dup$freq))] +
+                as.vector(dup$freq)
+              #-------------------------------------------------------------------#
+              # filter the duplicates
+              summary_dup <- summary[dup$idx, c("k_o","run")]
+              dup_ko_run <- paste0(summary_dup$k_o,":",summary_dup$run)
+              dupfreq_by_ko <- table(summary_dup$k_o)
+              trace_dup_rows <- which(paste0(trace$k_o,":",trace$run) %in% dup_ko_run)
+              
+              clust <- clust[-dup$idx, , drop = F]
+              summary <- summary[-dup$idx, ]
+              trace <- trace[-trace_dup_rows,]
+              #-------------------------------------------------------------------#
+              # update the total no. of dup filtered
+              n_filtered[n_filtered$k_o %in% names(dupfreq_by_ko),"dup"] <- as.numeric(
+                n_filtered[n_filtered$k_o %in% names(dupfreq_by_ko),"dup"] +
+                dupfreq_by_ko
+                )
+            }
+          }
+        }
+        #-------------------------------------------------------------------#
         # reindex the solutions
         if (!is.null(clust)) {
           summary$idx <- NULL
