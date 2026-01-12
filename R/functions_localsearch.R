@@ -829,23 +829,29 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
   N <- length(start:nrow(data))
   space_cost <- time_cost <- n <- numeric(k)
   #-------------------------------------------------------------------#
+  # precompute spacecost to avoid O(n^3/k)
+  # O(c^2) ~ O((n/k)^2) 
+  # O(c^2 * k) ~ O((n^2/k) 
+  space_costmat <- vapply(1:k, function(j) {
+    clust_points <- which(clust == j)
+    compute_spacecost(space_mat = space_mat,
+                      clust_points = clust_points,
+                      method = method,
+                      weights = weights)
+  }, FUN.VALUE = numeric(nrow(data)))
+  #-------------------------------------------------------------------#
   # loop through every point (incremental updating)
   for (i in start:nrow(data)) {
     #-------------------------------------------------------------------#
     # loop through every k
     for (j in 1:k) {
+      # O(c^2) is unavoidable 
       clust_points <- which(clust == j)
       n[j] <- length(clust_points)
       if (n[j] == 0) next
       #-------------------------------------------------------------------#
       # compute the spatial cost == j
-      # calculate the distance to the centroid in Hilbert space
-      # O(c^2) is unavoidable 
-      space_cost[j] <- compute_spacecost(space_mat = space_mat,
-                                         clust_points = clust_points,
-                                         i = i,
-                                         method = method,
-                                         weights = weights)
+      space_cost[j] <- space_costmat[i, j]
       #-------------------------------------------------------------------#
       # compute the temporal cost
       clust_points_tmp <- if (i %in% clust_points) clust_points[clust_points != i] else clust_points
@@ -1183,14 +1189,23 @@ find_dup <- function (clust, ari = 1) {
   # subset the columns of duplicated pairs
   pairs_dup <- pairs[, pairs_dup_idx, drop = FALSE]
   #-------------------------------------------------------------------#
-  # if a ~ b and b ~ c, then not necessarily a ~ c
+  # if a ~ b and b ~ c, then not necessarily a ~ c ####
   # the following steps makes sure they are the pairs with ari >= ari.dup 
   if (ncol(pairs_dup) > 1) {
     #-------------------------------------------------------------------#
     # dependence boolean
     pairs_dup_depend_bool <- logical()
+    pairs_dup_tmp <- pairs_dup
     for (i in 2:ncol(pairs_dup)) {
-      pairs_dup_depend_bool[i] <- pairs_dup[1, i] %in% pairs_dup[2, 1:(i-1)]
+      # if the reference is in one of the previous duplicates
+      if(pairs_dup_tmp[1, i] %in% pairs_dup_tmp[2, 1:(i-1)]) {
+        # mark the dependence
+        pairs_dup_depend_bool[i] <- TRUE
+        # break the chain by assigning 0 to the duplicate
+        pairs_dup_tmp[2,i] <- 0
+      } else {
+        pairs_dup_depend_bool[i] <- FALSE
+      }
     }
     pairs_dup_depend_idx <- which(pairs_dup_depend_bool == TRUE)
     #-------------------------------------------------------------------#
