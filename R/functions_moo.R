@@ -777,7 +777,7 @@ blob_moo <- function (data,
                       random_start = FALSE,
                       filter_intersects = TRUE,
                       filter_clustsize = TRUE,
-                      max_na = 0.05,
+                      max_na = 0,
                       space_kmat = NULL,
                       space_distmat = NULL,
                       space_distmethod = NULL,
@@ -786,7 +786,7 @@ blob_moo <- function (data,
                       beta_par = NULL,
                       weights = NULL,
                       pareto_similar_ari = NULL,
-                      obj = c("space_wcd","-time_wcr","-time_wce", "n_removed")) {
+                      obj = c("space_wcd","-time_wcr","-time_wce")) {
                       
   space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
   #-------------------------------------------------------------------#
