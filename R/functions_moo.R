@@ -436,7 +436,7 @@ combine_pop <- function(pop_a, pop_b) {
             k_o = sort(unique(dup_count$k_o)),
             rowsum(x = dup_count[ , "dup", drop = FALSE], group = dup_count$k_o)
           )
-          pop$n_filtered$dup <- dup_count$dup
+          pop$n_filtered$dup[pop$n_filtered$k_o %in% dup_count$k_o] <- dup_count$dup
         } else {
           pop$n_filtered$dup <- pop$n_filtered$dup + length(dup$idx)
         }
@@ -675,57 +675,57 @@ eval_moo <- function(batch_list, obj) {
 #' @export
 
 find_pareto_similar <- function(pop, ari) {
+  # get objectives and their signs
   obj <- pop$obj
-  # when this is to be reapplied
+  # when this function is rerun on stblob output
   pop$summary$pareto_similar <- NULL
-  
-  #-------------------------------------------------------------------#
+  pop$summary$pareto_similar <- 0
+  pop$trace$pareto_similar <- NULL
+  pop$trace$pareto_similar <- 0
   # parse parameter obj to get the column indices and parsed obj names
   parse_obj_out <- parse_obj(obj)
   maximise_obj_idx <- parse_obj_out$maximise_obj_idx
   # use the parsed obj names in the following steps
   obj <- parse_obj_out$obj
-  # select the columns of the objective space
-  pareto_objspace <- subset(pop$summary, pareto == 1)[ , obj]
-  pareto_idx <- subset(pop$summary, pareto == 1)$idx
-  pareto_clust <- pop$clust[pareto_idx, ]
-  
-  # multiply maximising obj by -1
-  if (length(maximise_obj_idx) > 0) {
-    for(j in maximise_obj_idx) {
-      pareto_objspace[[ obj[j] ]] <- -pareto_objspace[[ obj[j] ]]
+  #-------------------------------------------------------------------#
+  for(k in sort(unique(pop$summary$k))) {
+    # select the columns of the objective space
+    pop_subset <- subset(pop$summary, pareto == 1 & k == 5)
+    pareto_objspace <- pop_subset[ , obj]
+    pareto_idx <- pop_subset$idx
+    pareto_clust <- pop$clust[pareto_idx, ]
+    # multiply maximising obj by -1
+    if (length(maximise_obj_idx) > 0) {
+      for(j in maximise_obj_idx) {
+        pareto_objspace[[ obj[j] ]] <- -pareto_objspace[[ obj[j] ]]
+      }
+    }
+    #-------------------------------------------------------------------#
+    # find_dup() is order dependent (i.e. it keeps the first row between the dup), therefore when it comes to similarity we want to prioritise based on the objectives
+    # order the solutions by the objectives
+    pareto_objspace$idx <- 1:nrow(pareto_objspace)
+    ordered_idx <- eval(
+      parse(
+        text = paste0("pareto_objspace[order(", paste0(paste0("pareto_objspace$", obj), collapse = ","), "), ]$idx")
+      ) 
+    )
+    ordered_clust <- pareto_clust[ordered_idx, ]
+    #-------------------------------------------------------------------#
+    similar <- find_dup(clust = ordered_clust, ari = ari)
+    # map the idx in the find_dup() to the original idx
+    # idx
+    similar$idx <- pareto_idx[ordered_idx[similar$idx]]
+    # freq
+    names(similar$freq) <- pareto_idx[ordered_idx[as.numeric(names(similar$freq))]]
+    # pairs_dup
+    similar$pairs_dup <- apply(similar$pairs_dup, c(1,2), function(x) pareto_idx[ordered_idx[x]])
+    #-------------------------------------------------------------------#
+    if (length(similar$idx) > 0) {
+      pop$summary$pareto_similar[similar$idx] <- 1
+      pop$trace$pareto_similar[pop$trace$idx %in% similar$idx] <- 1
     }
   }
-  #-------------------------------------------------------------------#
-  # find_dup() is order dependent (i.e. it keeps the first row between the dup), therefore when it comes to similarity we want to prioritise based on the objectives
-  # order the solutions by the objectives
-  pareto_objspace$idx <- 1:nrow(pareto_objspace)
-  ordered_idx <- eval(
-    parse(
-      text = paste0("pareto_objspace[order(", paste0(paste0("pareto_objspace$", obj), collapse = ","), "), ]$idx")
-    ) 
-  )
-  ordered_clust <- pareto_clust[ordered_idx, ]
-  #-------------------------------------------------------------------#
-  similar <- find_dup(clust = ordered_clust, ari = ari)
-  # map the idx in the find_dup() to the original idx
-  # idx
-  similar$idx <- pareto_idx[ordered_idx[similar$idx]]
-  # freq
-  names(similar$freq) <- pareto_idx[ordered_idx[as.numeric(names(similar$freq))]]
-  # pairs_dup
-  similar$pairs_dup <- apply(similar$pairs_dup, c(1,2), function(x) pareto_idx[ordered_idx[x]])
-  #-------------------------------------------------------------------#
-  # flag similar if any
-  pop$summary$pareto_similar <- NULL
-  pop$summary$pareto_similar <- 0
-  pop$trace$pareto_similar <- NULL
-  pop$trace$pareto_similar <- 0
-  if (length(similar$idx) > 0) {
-    pop$summary$pareto_similar[similar$idx] <- 1
-    pop$trace$pareto_similar[pop$trace$idx %in% similar$idx] <- 1
-    pop$pareto_idx <- subset(pop$summary, pareto == 1 & pareto_similar == 0)$idx
-  }
+  pop$pareto_idx <- subset(pop$summary, pareto == 1 & pareto_similar == 0)$idx
   return(pop)
 }
 
