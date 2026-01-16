@@ -1212,6 +1212,7 @@ find_dup <- function (clust, ari = 1) {
     # remove the dependent columns 
     if (length(pairs_dup_depend_idx) > 0) {
       pairs_dup <- pairs_dup[ , -pairs_dup_depend_idx, drop = FALSE]
+      pairwise_ari <- pairwise_ari[pairs_dup_idx[-pairs_dup_depend_idx]]
     }
   }
   #-------------------------------------------------------------------#
