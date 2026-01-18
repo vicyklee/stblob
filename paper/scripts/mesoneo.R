@@ -1,4 +1,3 @@
-# mesoneo
 install.packages(c("here", "future", "patchwork", "stringr"))
 remotes::install_github("vicyklee/stblob")
 
@@ -23,9 +22,9 @@ data <- readr::read_tsv(here("paper/data/mesoneo.tsv")) %>%
 
 start <- Sys.time()
 set.seed(123)
-res <- stblob(data, k = c(5,6), r = c(0.95,1), run = 50, batch = 200,
+res <- stblob(data, k = c(5,12), r = c(0.95,1), run = 50, batch = 100,
               coords = c("Longitude","Latitude"), age = "Age_average",
-              pareto_similar_ari = 0.8, obj = c("n_removed", "space_wcd", "-time_wcr", "-time_wce"))
+              pareto_similar_ari = 0.8, obj = c("space_wcd", "-time_wcr", "-time_wce"))
 end <- Sys.time()
 print(end-start)
 saveRDS(res,file = here("paper/output/mesoneo_res_k5to12.rds"))
