@@ -9,22 +9,21 @@ License: MIT + file LICENSE
 Depends: 
     R (>= 2.10)
 Imports: 
+    dplyr,
     future.apply,
     geosphere,
+    ggplot2,
+    ggridges,
     lhs,
     magrittr,
     mclust,
     moocore,
-    sf
-Suggests: 
-    dplyr,
-    ggplot2,
-    ggridges,
-    mvtnorm,
     rlang,
     rnaturalearth,
-    scales,
+    sf,
     tidyr
+Suggests: 
+    mvtnorm
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

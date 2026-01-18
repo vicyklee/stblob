@@ -7,7 +7,7 @@
 plot_mooquality(pop_moo, indicator = c("igd", "igd_plus", "hv"))
 }
 \arguments{
-\item{pop_moo}{a \code{pop_moo} object; see also \code{\link[=blob_moo]{blob_moo()}}.}
+\item{pop_moo}{a \code{pop_moo} object; see also \code{\link[=stblob]{stblob()}}.}
 
 \item{indicator}{a string of MOO quality indicator. It must be either "igd", "igd_plus" or "hv".}
 }

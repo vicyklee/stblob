@@ -762,32 +762,32 @@ find_pareto_similar <- function(pop, ari) {
 #'
 #' @export
 
-blob_moo <- function (data,
-                      k,
-                      r = c(0.5,1),
-                      iter = 10,
-                      run = 100,
-                      batch = 5,
-                      converge_ari = 1,
-                      coords = c(1,2),
-                      age = 3,
-                      space_clustmethod = "kmedoids",
-                      crs = 4326,
-                      hull_convex_ratio = 0,
-                      random_start = FALSE,
-                      filter_intersects = TRUE,
-                      filter_clustsize = TRUE,
-                      max_na = 0,
-                      space_kmat = NULL,
-                      space_distmat = NULL,
-                      space_distmethod = NULL,
-                      w_knn = NULL,
-                      l_normalise = NULL,
-                      beta_par = NULL,
-                      weights = NULL,
-                      pareto_similar_ari = NULL,
-                      obj = c("space_wcd","-time_wcr","-time_wce")) {
-                      
+stblob <- function (data,
+                    k,
+                    r = c(0.5,1),
+                    iter = 10,
+                    run = 100,
+                    batch = 5,
+                    converge_ari = 1,
+                    coords = c(1,2),
+                    age = 3,
+                    space_clustmethod = "kmedoids",
+                    crs = 4326,
+                    hull_convex_ratio = 0,
+                    random_start = FALSE,
+                    filter_intersects = TRUE,
+                    filter_clustsize = TRUE,
+                    max_na = 0,
+                    space_kmat = NULL,
+                    space_distmat = NULL,
+                    space_distmethod = NULL,
+                    w_knn = NULL,
+                    l_normalise = NULL,
+                    beta_par = NULL,
+                    weights = NULL,
+                    pareto_similar_ari = NULL,
+                    obj = c("space_wcd","-time_wcr","-time_wce")) {
+  
   space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
   #-------------------------------------------------------------------#
   # select the relevant columns

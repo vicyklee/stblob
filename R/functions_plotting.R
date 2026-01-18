@@ -23,9 +23,9 @@ save_pdf <- function(p, file, width, height, ...) {
 #' 
 #' @description
 #' This function plots the objective space.
-#' @param pop a list of objects returned from [blob_moo()].
+#' @param pop a list of objects returned from [stblob()].
 #' @param obj a string vector of length 2 that indicates the objectives.
-#' @param colour a string of the attribute to be coloured. It must be either "pareto", "r", "batch" or "k_o".
+#' @param colour a string of the attribute to be coloured. It must be either "pareto", "r", "batch" or "k".
 #' @param normalise a Boolen. Should values of objectives be normalised? Default is TRUE.
 #' @param size size for [ggplot2::geom_point()].
 #' @param alpha See <[`aes-colour-fill-alpha`][ggplot2::aes_colour_fill_alpha()]>.
@@ -34,7 +34,7 @@ save_pdf <- function(p, file, width, height, ...) {
 
 plot_objspace <- function (pop,
                            obj,
-                           colour = c("r", "batch", "k_o", "pareto"),
+                           colour = c("r", "batch", "k", "pareto"),
                            normalise = TRUE,
                            size= 1,
                            alpha = 0.8) {
@@ -56,8 +56,8 @@ plot_objspace <- function (pop,
   if (colour == "batch") {
     objspace <- objspace %>% dplyr::mutate(batch = as.factor(batch))
   }
-  if (colour == "k_o") {
-    objspace <- objspace %>% dplyr::mutate(k_o = as.factor(k_o))
+  if (colour == "k") {
+    objspace <- objspace %>% dplyr::mutate(k_o = as.factor(k))
   }
   if (colour == "pareto") {
     objspace <- objspace %>% dplyr::mutate(pareto = factor(pareto, levels=c("1","0")))
@@ -84,13 +84,13 @@ plot_objspace <- function (pop,
                         size = size, alpha = alpha)
   
   if (colour == "r") {
-    p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, end = 0.8)
+    p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, begin = 0.1, end = 0.8)
   }
   if (colour == "batch") {
-    p <- p + ggplot2::scale_color_viridis_d(option = "A", direction = -1, end = 0.9)
+    p <- p + ggplot2::scale_color_viridis_d(option = "H", direction = -1)
   }
-  if (colour == "k_o") {
-    p <- p + ggplot2::scale_color_viridis_d(option = "D", direction = -1, end = 0.95) 
+  if (colour == "k") {
+    p <- p + ggplot2::scale_color_viridis_d(option = "A", direction = -1, begin = 0.1, end = 0.8)
   }
   if (colour == "pareto") {
     p <- p + ggplot2::scale_colour_manual(values = c("#95c36e", "grey"))
@@ -99,6 +99,108 @@ plot_objspace <- function (pop,
   if (normalise == TRUE) {
     p <- p + ggplot2::coord_fixed()
   }
+  return(p)
+}
+
+#------------------------------------------------------------------------------#
+#' Plot parallel coordinate plot
+#' 
+#' @description
+#' This function plots the objective space.
+#' @param pop a list of objects returned from [stblob()].
+#' @param colour a string of the attribute to be coloured. It must be either "pareto", "r", "batch" or "k".
+#' @param normalise a Boolen. Should values of objectives be normalised? Default is TRUE.
+#' @param pareto a Boolen. Should only the Pareto solutions be displayed? Default is TRUE.
+#' @param pareto_similar a Boolen. Should only the similar Pareto solutions be displayed? Default is FALSE.
+#' @param linewidth linewidth for [ggplot2::geom_line()].
+#' @param alpha See <[`aes-colour-fill-alpha`][ggplot2::aes_colour_fill_alpha()]>.
+#' @return a `ggplot` object.
+#' @export
+
+plot_pcp <- function (pop,
+                      colour = c("r","k","batch","pareto"),
+                      normalise = TRUE,
+                      pareto = TRUE,
+                      pareto_similar = FALSE,
+                      linewidth = 1,
+                      alpha = 0.8) {
+  
+  # check for input
+  colour <- match.arg(colour)
+  if(!colour %in%  names(pop$summary)) {
+    stop("colour option is not available for your input.")
+  }
+  
+  obj <- pop$obj
+  parse_obj_out <- parse_obj(obj)
+  signed_obj <- obj
+  obj <- parse_obj_out$obj
+  maximise_obj_idx <- parse_obj_out$maximise_obj_idx
+  
+  objspace <- pop$summary %>%
+    dplyr::select(c(dplyr::all_of(obj), dplyr::all_of(colour)), pareto, pareto_similar, idx)
+  
+  if (colour == "batch") {
+    objspace <- objspace %>% dplyr::mutate(batch = as.factor(batch))
+  }
+  if (colour == "k") {
+    objspace <- objspace %>% dplyr::mutate(k = as.factor(k))
+  }
+  if (colour == "pareto") {
+    objspace <- objspace %>% dplyr::mutate(pareto = factor(pareto, levels=c("1","0")))
+  }
+  
+  if (length(parse_obj_out$maximise_obj_idx) > 0) {
+    objspace <- objspace %>%
+      dplyr::mutate_at(obj[maximise_obj_idx], function(x) -1*x) %>%
+      dplyr::rename_with(~paste0("-",.x), dplyr::all_of(obj[maximise_obj_idx]))
+  }
+  
+  if (normalise == TRUE) {
+    # obtain upper and lower bounds from the Pareto front
+    ub <- vapply(1:length(obj), function(i) max(objspace[[signed_obj[i]]]), numeric(1))
+    lb <- vapply(1:length(obj), function(i) min(objspace[[signed_obj[i]]]), numeric(1)) 
+    # normalise the objectives
+    objspace[, signed_obj] <- moocore::normalise(objspace[, signed_obj], to_range = c(0,1), lower = lb, upper = ub)
+  }
+  
+  if (pareto == TRUE) {
+    objspace <- objspace %>%
+      dplyr::filter(pareto == 1)
+  }
+  
+  if (pareto_similar == FALSE) {
+    objspace <- objspace %>%
+      dplyr::filter(pareto_similar == 0)
+  }
+  
+  objspace_long <- tidyr::pivot_longer(objspace,
+                                       cols = dplyr::all_of(signed_obj),
+                                       names_to = "obj",
+                                       values_to = "obj_value") %>%
+    dplyr::mutate(obj = factor(obj, levels = signed_obj))
+  
+  p <- ggplot2::ggplot(objspace_long) +
+    ggplot2::geom_line(ggplot2::aes(x = obj,
+                                    y = obj_value,
+                                    colour = .data[[colour]],
+                                    group = idx),
+                       linewidth = linewidth, alpha = alpha) +
+    ggplot2::scale_x_discrete(expand = ggplot2::expansion(mult = c(0.1,0.1)))
+  
+  if (colour == "r") {
+    p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, begin = 0.1, end = 0.8)
+  }
+  if (colour == "batch") {
+    p <- p + ggplot2::scale_color_viridis_d(option = "H", direction = -1)
+  }
+  if (colour == "k") {
+    p <- p + ggplot2::scale_color_viridis_d(option = "A", direction = -1, begin = 0.1, end = 0.8)
+  }
+  if (colour == "pareto") {
+    p <- p + ggplot2::scale_colour_manual(values = c("#95c36e", "grey"))
+  }
+  
   return(p)
 }
 
@@ -114,7 +216,7 @@ plot_objspace <- function (pop,
 pivot_trace <- function (data) {
   stat <- c("space_wcd", "time_wcr", "time_wce", "ari")
   
-  optional_cols <- c("batch", "k_o")
+  optional_cols <- c("batch", "k")
   optional_cols <- optional_cols[optional_cols %in% names(data)]
   fct_cols <- c("run", optional_cols)
 
@@ -133,16 +235,16 @@ pivot_trace <- function (data) {
 #' @description
 #' This function plots the trace.
 #' @inheritParams plot_objspace
-#' @param colour a string of the attribute to be coloured. It must be either "r", "batch" or "k_o".
+#' @param colour a string of the attribute to be coloured. It must be either "r", "batch" or "k".
 #' @return a ggplot.
 #' @seealso [ggplot2::scale_colour_manual()], [MetBrewer::met.brewer()]
 #' @export
 
-plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
+plot_trace <- function(pop, colour = c("r", "batch", "k"), alpha = 0.8) {
   # check for input
   colour <- match.arg(colour)
   
-  optional_cols <- c("batch", "k_o")
+  optional_cols <- c("batch", "k")
   optional_cols <- optional_cols[optional_cols %in% names(pop$trace)]
   group_cols <- c("stat", "run", optional_cols)
   
@@ -154,17 +256,16 @@ plot_trace <- function(pop, colour = c("r", "batch", "k_o"), alpha = 0.8) {
                                     colour = .data[[colour]]), alpha = alpha) +
     ggplot2::facet_wrap(~stat, scales = "free", nrow = 1) +
     ggplot2::theme(axis.title.y = ggplot2::element_blank()) +
-    # ggplot2::scale_x_continuous(breaks = scales::pretty_breaks()) +
     ggplot2::xlab("iteration")
   
   if (colour == "r") {
-    p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, end = 0.8)
+    p <- p + ggplot2::scale_color_viridis_c(option = "G", direction = -1, begin = 0.1, end = 0.8)
   }
   if (colour == "batch") {
-    p <- p + ggplot2::scale_color_viridis_d(option = "A", direction = -1, end = 0.9)
+    p <- p + ggplot2::scale_color_viridis_d(option = "H", direction = -1)
   }
-  if (colour == "k_o") {
-    p <- p + ggplot2::scale_color_viridis_d(option = "D", direction = -1, end = 0.95)
+  if (colour == "k") {
+    p <- p + ggplot2::scale_color_viridis_d(option = "A", direction = -1, begin = 0.1, end = 0.8)
   }
   
   return(p)
@@ -274,7 +375,6 @@ plot_space <- function(data,
       p <- ggplot2::ggplot() +
         ggplot2::geom_sf(data = hulls, ggplot2::aes(fill = clust), colour = NA, lwd = 0.3, alpha = 0.3, show.legend = F) +
         ggplot2::geom_sf(data = pts, size = size, alpha = 0.8, ggplot2::aes(colour = .data[[colour]])) 
-        # ggplot2::scale_fill_viridis_d(option = "G", direction = -1,  begin = begin, end = end)
       
     } else if (space == "earth") {
       world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
@@ -287,15 +387,15 @@ plot_space <- function(data,
         ggplot2::coord_sf(xlim = xlim, ylim = ylim, expand = FALSE, crs = crs)
     }
     p <- p +
-      ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end)
+      ggplot2::scale_fill_viridis_d(option = "A", direction = -1, begin = begin, end = end)
   }
   
   if (is.null(weights)) {
     if(!all(is.na(clust))) {
-      p <- p + ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end, na.value = "grey50")
+      p <- p + ggplot2::scale_colour_viridis_d(option = "A", direction = -1, begin = begin, end = end, na.value = "grey50")
     }
   } else {
-    p <- p + ggplot2::scale_colour_viridis_c(option = "G", direction = -1, begin = begin, end = end)
+    p <- p + ggplot2::scale_colour_viridis_c(option = "A", direction = -1, begin = begin, end = end)
   }
   return(p)
 }
@@ -331,8 +431,8 @@ plot_time <- function (data, clust, age = 3) {
     ggplot2::theme(axis.text.y = ggplot2::element_blank(),
                    axis.ticks.y = ggplot2::element_blank(),
                    axis.title.y = ggplot2::element_blank()) +
-    ggplot2::scale_colour_viridis_d(option = "G", direction = -1, begin = begin, end = end, na.value = "grey50") +
-    ggplot2::scale_fill_viridis_d(option = "G", direction = -1, begin = begin, end = end) +
+    ggplot2::scale_colour_viridis_d(option = "A", direction = -1, begin = begin, end = end, na.value = "grey50") +
+    ggplot2::scale_fill_viridis_d(option = "A", direction = -1, begin = begin, end = end) +
     ggplot2::scale_y_discrete(expand = ggplot2::expansion(mult = c(0,0), add = c(0.2,0.6)))
   return(p)
 }
@@ -342,7 +442,7 @@ plot_time <- function (data, clust, age = 3) {
 #' 
 #' @description
 #' This function plots multi-objective optimisation (MOO) quality.
-#' @param pop_moo a `pop_moo` object; see also [blob_moo()].
+#' @param pop_moo a `pop_moo` object; see also [stblob()].
 #' @param indicator a string of MOO quality indicator. It must be either "igd", "igd_plus" or "hv".
 #' @returns a `ggplot` object.
 #' @export

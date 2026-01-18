@@ -4,12 +4,12 @@
 \alias{plot_trace}
 \title{Plot trace}
 \usage{
-plot_trace(pop, colour = c("r", "batch", "k_o"), alpha = 0.8)
+plot_trace(pop, colour = c("r", "batch", "k"), alpha = 0.8)
 }
 \arguments{
-\item{pop}{a list of objects returned from \code{\link[=blob_moo]{blob_moo()}}.}
+\item{pop}{a list of objects returned from \code{\link[=stblob]{stblob()}}.}
 
-\item{colour}{a string of the attribute to be coloured. It must be either "r", "batch" or "k_o".}
+\item{colour}{a string of the attribute to be coloured. It must be either "r", "batch" or "k".}
 
 \item{alpha}{See <\code{\link[ggplot2:aes_colour_fill_alpha]{aes-colour-fill-alpha}}>.}
 }
