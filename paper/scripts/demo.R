@@ -4,9 +4,6 @@ remotes::install_github("vicyklee/stblob")
 
 here::i_am("paper/scripts/demo.R")
 library(here)
-# source(here("R/functions_localsearch.R"))
-# source(here("R/functions_moo.R"))
-# source(here("R/functions_plotting.R"))
 library(stblob)
 library(future)
 library(ggplot2)
@@ -27,27 +24,28 @@ save_pdf(p_demo1, here("paper/figures/demo1.pdf"), width = 4, height = 4)
 
 # run the algorithm
 set.seed(123)
-res <- blob_moo(data, k = c(2,3), r = c(0.8,1),
-                run = 15, batch = 5,
-                space_distmethod = "euclidean",
-                pareto_similar_ari = 0.8,
-                obj = c("space_wcd","-time_wcr","-time_wce"))
+res <- stblob(data, k = c(2,3), r = c(0.8,1),
+              run = 15, batch = 5,
+              space_distmethod = "euclidean",
+              pareto_similar_ari = 0.8,
+              obj = c("space_wcd","-time_wcr","-time_wce"))
 saveRDS(res, file = here("paper/output/demo1_res.rds"))
 
 # results
 # res <- readRDS(here("paper/output/demo1_res.rds"))
-write.csv(res$summary[,c("idx","batch","k", "run", "r", "space_wcd", "time_wcr", "time_wce", "pareto")],
-          here("paper/output/demo1_res_summary.csv"),row.names = F)
+res_summary <- res$summary %>% arrange("space_wcd", desc("time_wcr"), desc("time_wce"))
+write.csv(res_summary[,c("idx","batch","k", "run", "r", "space_wcd", "time_wcr", "time_wce", "pareto")],
+          here("paper/output/demo1_summary.csv"),row.names = F)
 
 plot_idx <- res$summary %>%
   filter(pareto==1) %>%
-  arrange(desc(space_wcd),time_wcr,time_wce) %>%
+  arrange(space_wcd,desc(time_wcr),desc(time_wce)) %>%
   pull(idx)
 
 p_list <- list()
 for (i in seq_along(plot_idx)) {
   j <- plot_idx[i]
-  p_s <- plot_space(data,clust = res$clust[j,], space = "euclidean", hull = T, hull_convex_ratio = 0.5) +
+  p_s <- plot_space(data,clust = res$clust[j,], space = "euclidean", hull = T, hull_convex_ratio = 0.8) +
     theme(legend.position = "none") +
     labs(colour = "cluster")
   if(j %in% res$pareto_idx) {p_s <- p_s + theme(plot.background = element_rect(fill = "#DFF2FF", colour = "#DFF2FF"))} 
@@ -64,7 +62,7 @@ for (i in seq_along(plot_idx)) {
 
 p_clust <- wrap_plots(p_list, nrow = 1) +
   plot_annotation(tag_levels = 'A') & theme(plot.tag=element_text(size = 12, face = "bold"))
-save_pdf(p_clust, here("paper/figures/demo1_res.pdf"), width = 12, height = 4)
+save_pdf(p_clust, here("paper/figures/demo1_clust.pdf"), width = 12, height = 4)
 
 # convergence
 p_trace <- plot_trace(res)
@@ -79,8 +77,9 @@ save_pdf(p_conv, here("paper/figures/demo1_convergence.pdf"), width = 10, height
 # objective space
 p_objs1 <- plot_objspace(res, obj = res$obj[c(1,2)], colour = "pareto", alpha = 0.8) 
 p_objs2 <- plot_objspace(res, obj = res$obj[c(1,3)], colour = "pareto", alpha = 0.8) 
-p_objs <- wrap_plots(p_objs1, p_objs2, nrow = 1, guides = "collect")
-save_pdf(p_objs, here("paper/figures/demo1_objspace.pdf"), width = 7, height = 3)
+p_objs3 <- plot_objspace(res, obj = res$obj[c(2,3)], colour = "pareto", alpha = 0.8) 
+p_objs <- wrap_plots(p_objs1, p_objs2, p_objs3, nrow = 1, guides = "collect")
+save_pdf(p_objs, here("paper/figures/demo1_objspace.pdf"), width = 9, height = 3)
 
 #------------------------------------------------------------------------------#
 # Simulated dataset 1 - WCE^t ####
@@ -93,19 +92,19 @@ save_pdf(p_demo1, here("paper/figures/demo1.pdf"), width = 4, height = 4)
 
 # run the algorithm
 set.seed(123)
-res <- blob_moo(data, k = 3, r = 0,
-                run = 15, batch = 5,
-                iter = 20,
-                space_distmethod = "euclidean",
-                pareto_similar_ari = 0.8,
-                obj = c("-time_wcr","-time_wce"),
-                filter_intersects = F)
+res <- stblob(data, k = 3, r = 0,
+              run = 15, batch = 5,
+              iter = 20,
+              space_distmethod = "euclidean",
+              pareto_similar_ari = 0.8,
+              obj = c("-time_wcr","-time_wce"),
+              filter_intersects = F)
 saveRDS(res, file = here("paper/output/demo1_twce_res.rds"))
 
 # results
 # res <- readRDS(here("paper/output/demo1_twce_res.rds"))
 write.csv(res$summary[res$pareto_idx,c("idx","batch","k", "run", "r", "space_wcd", "time_wcr", "time_wce", "pareto")],
-          here("paper/output/demo1_twce_res_summary.csv"), row.names = F)
+          here("paper/output/demo1_twce_summary.csv"), row.names = F)
 
 p_s <- plot_space(data, clust = res$clust[res$pareto_idx,], space = "euclidean", hull = T, hull_convex_ratio = 0.5) +
   labs(colour = "cluster")
@@ -129,7 +128,7 @@ p_objs <- plot_objspace(res, obj = res$obj[c(1,2)], colour = "pareto", alpha = 0
   theme(axis.text.x = element_blank())
 
 p_clust[[2]] <- p_clust[[2]] + plot_layout(tag_level = 'new')
-p_all <- wrap_plots((p_clust | wrap_plots(p_objs, guides ="collect")) /p_conv) +
+p_all <- wrap_plots((p_clust | wrap_plots(p_objs, guides ="collect")) / p_conv) +
   plot_annotation(tag_levels = 'A') & theme(plot.tag=element_text(size = 12, face = "bold"))
 save_pdf(p_all, here("paper/figures/demo1_twce_all.pdf"), width = 8, height = 7.5)
 
@@ -144,17 +143,18 @@ save_pdf(p_demo2, here("paper/figures/demo2.pdf"), width = 4, height = 4)
 
 # run the algorithm
 set.seed(253)
-res <- blob_moo(data, k = c(2,3), r = c(0.8,1),
-                run = 15, batch = 5,
-                space_distmethod = "euclidean",
-                pareto_similar_ari = 0.9,
-                obj = c("space_wcd","-time_wcr","-time_wce"))
+res <- stblob(data, k = c(2,3), r = c(0.8,1),
+              run = 15, batch = 5,
+              space_distmethod = "euclidean",
+              pareto_similar_ari = 0.9,
+              obj = c("space_wcd","-time_wcr","-time_wce"))
 saveRDS(res,file = here("paper/output/demo2_res.rds"))
 
 # results
 # res <- readRDS(here("paper/output/demo2_res.rds"))
-write.csv(res$summary[,c("idx","batch","k", "run", "r", "space_wcd", "time_wcr", "time_wce", "pareto")],
-          here("paper/output/demo2_res_summary.csv"),row.names = F)
+res_summary <- res$summary %>% arrange("space_wcd", desc("time_wcr"), desc("time_wce"))
+write.csv(res_summary[,c("idx","batch","k", "run", "r", "space_wcd", "time_wcr", "time_wce", "pareto")],
+          here("paper/output/demo2_summary.csv"),row.names = F)
 
 p_s <- plot_space(data, clust = res$clust[res$pareto_idx,], space = "euclidean", hull = T, hull_convex_ratio = 0.5) +
   labs(colour = "cluster")
