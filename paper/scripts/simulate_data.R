@@ -1,5 +1,5 @@
 # Simulate datasets
-here::i_am("scripts/simulate_data.R")
+here::i_am("paper/scripts/simulate_data.R")
 library(here)
 library(stblob)
 #------------------------------------------------------------------------------#
