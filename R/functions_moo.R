@@ -690,7 +690,7 @@ find_pareto_similar <- function(pop, ari) {
   #-------------------------------------------------------------------#
   for(k in sort(unique(pop$summary$k))) {
     # select the columns of the objective space
-    pop_subset <- subset(pop$summary, pareto == 1 & k == 5)
+    pop_subset <- subset(pop$summary, pareto == 1 & k == k)
     pareto_objspace <- pop_subset[ , obj]
     pareto_idx <- pop_subset$idx
     pareto_clust <- pop$clust[pareto_idx, ]
