@@ -5,12 +5,10 @@ remotes::install_github("vicyklee/stblob")
 here::i_am("paper/scripts/mesoneo_plots.R")
 library(here)
 library(stblob)
-library(future)
 library(ggplot2)
 library(patchwork)
 library(dplyr)
 
-plan(multisession)
 ggplot2::theme_set(ggplot2::theme_bw())
 
 
