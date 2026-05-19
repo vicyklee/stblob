@@ -15,6 +15,11 @@ ggplot2::theme_set(ggplot2::theme_bw())
 #------------------------------------------------------------------------------#
 # Archaeological (aDNA) dataset full 
 #------------------------------------------------------------------------------#
+data <- readr::read_tsv(here("paper/data/mesoneo.tsv")) %>%
+  filter(stringr::str_detect(Region, "Europe") | Region == "WesternAsia",
+         Country != "Faroes" & Country != "Greenland" & Country != "Iceland",
+         Age_average <= 15000)
+
 p_s <- plot_space(data, clust = data$Region, coords = c("Longitude", "Latitude"), alpha = 0.5) +
   labs(colour = "region")
 p_t <- plot_time(data, clust = data$Region, age = "Age_average") +
@@ -28,6 +33,7 @@ save_pdf(p_mesoneo, here("paper/figures/mesoneo.pdf"), width = 8, height = 3)
 
 # Results
 res <- readRDS(here("paper/output/mesoneo_res_k5to12_maxna0.rds"))
+res <- stblob::find_pareto_similar(res,ari = 0.8)
 # Time difference of 1.179481 hours, 96 cores
 
 data <- readr::read_tsv(here("paper/data/mesoneo.tsv")) %>%
