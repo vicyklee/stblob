@@ -1,12 +1,12 @@
 #------------------------------------------------------------------------------#
-# Local search algorithm ####
+# Functions for the local search algorithm ####
 #------------------------------------------------------------------------------#
 #' Compute distance matrix
 #' 
 #' @description
 #' This function computes and returns a distance matrix.
 #'
-#' @param data a numeric matrix or data frame.
+#' @param data a numeric matrix or data frame of spatial coordinates.
 #' @param method a string of the method. Either "geodesic" or "euclidean" is available. Default is "geodesic".
 #'
 #' @details
@@ -17,8 +17,13 @@
 #' @export
 
 compute_distmat <- function(data, method = "geodesic") {
+  # checks
   method <- match.arg(method, choices = c("geodesic", "euclidean"))
+  stopifnot("data must be a numeric matrix or data frame of spatial coordinates." = is.matrix(data) | is.data.frame(data))
+  # convert data to matrix
   data <- as.matrix(data)
+  # checks
+  stopifnot("data must be a numeric matrix or data frame of spatial coordinates." = is.numeric(data))
   #-------------------------------------------------------------------#
   if (method == "geodesic") {
     distmat <- as.matrix(geosphere::distm(data, fun = geosphere::distGeo)) / 1000
@@ -30,391 +35,21 @@ compute_distmat <- function(data, method = "geodesic") {
 }
 
 #------------------------------------------------------------------------------#
-#' Compute adjacency matrix using local scaling
-#' 
-#' @description
-#' This function converts a distance matrix to a weighted adjacency matrix using a local scaling similarity function.
-#'
-#' @param distmat a distance matrix.
-#' @param knn an integer of the k-th nearest neighbour. Default is 7.
-#' 
-#' @details
-#' The similarity function was proposed by Zelnik-Manor and Perona (2004). 
-#' Instead of using a fixed scaling parameter for all data points, a local scaling parameter is calculated for
-#' every point based on their \eqn{k^{th}} nearest neighbour in the conversion of pairwise distance to pairwise adjacency (affinity/similarity).
-#' See Zelnik-Manor and Perona (2004) for more information.
-#' 
-#' @returns a weighted adjacency matrix.
-#' @references
-#' Zelnik-Manor, L., & Perona, P. (2004). Self-Tuning Spectral Clustering. Neural Information Processing Systems, 17, 1601–1608.
-#' 
-#' @export
-
-compute_adjacency <- function(distmat, knn = 7) {
-  knn <- floor(knn)
-  sorted_distmat <- t(apply(distmat[,-1], 1, sort)) # sort 
-  # distance to the k-th nearest neighbour 
-  knn_distmat <- apply(sorted_distmat, 1, function(x) {
-    d <- x[knn]
-    # if dist of knn is 0, find (k+1)nn
-    while(d == 0) {
-      knn <- knn + 1
-      d <- x[knn]
-    }
-    return(d)
-  })
-  V <- outer(knn_distmat, knn_distmat, "*") # a matrix of sigma_i * sigma_j
-  W <- exp(-distmat^2 / V)
-  diag(W) <- 0 # no self-loop
-  return(W)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute graph Laplacian
-#' 
-#' @description
-#' This function computes and returns a graph Laplacian.
-#'
-#' @param W a symmetric adjaceny matrix.
-#' @param normalise a Boolean to normalise the graph Laplacian. Default is TRUE.
-#'
-#' @returns a graph Laplacian matrix.
-#' @references
-#' Chung, F. R. (1997). Spectral graph theory (Vol. 92). American Mathematical Soc..
-#' 
-#' Smola, A. J., & Kondor, R. (2003, August). Kernels and regularization on graphs. In Learning theory and kernel machines: 16th annual conference on learning theory and 7th kernel workshop, COLT/kernel 2003, Washington, DC, USA, august 24-27, 2003. Proceedings (pp. 144-158). Berlin, Heidelberg: Springer Berlin Heidelberg.
-#' 
-#' @export
-
-compute_laplacian <- function (W, normalise = TRUE) {
-  d <- rowSums(W)
-  if (normalise == FALSE) {
-    L <- diag(d) - W
-  } 
-  if (normalise == TRUE) {
-    D_inv_sqrt <- diag(1 / sqrt(d))
-    D_inv_sqrt[!is.finite(D_inv_sqrt)] <- 0  # handle isolated nodes
-    L <- diag(nrow(W)) - D_inv_sqrt %*% W %*% D_inv_sqrt
-  }
-  return(L)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute diffusion kernel
-#' 
-#' @description
-#' This function computes and returns a kernel matrix using a diffusion kernel as defined by Kondor and Lafferty (2002).
-#'
-#' @param L a graph Laplacian.
-#' @param beta a numeric parameter controlling the diffusion rate. 
-#'
-#' @returns a diffusion kernel matrix
-#' @references 
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' @export
-
-diffusion_kernel <- function(L, beta) {
-  eig <- eigen(L, symmetric = TRUE)
-  U <- eig$vectors
-  lambda <- eig$values
-  exp_lambda <- exp(-beta * lambda)
-  kmat <- U %*% diag(exp_lambda) %*% t(U)
-  return(kmat)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute the effective rank from singular values of a matrix
-#' 
-#' @description
-#' This function computes and returns the effective rank from singular values of a matrix following Roy and Vetterli (2007).
-#'
-#' @param sigma a numeric vector of singular values.
-#' 
-#' @details
-#' Instead of treating \eqn{0\log{0} = 0} in Roy and Vetterli (2007), 1e8 is returned when any \eqn{\sigma_i = 0}
-#' due to its application in the optimisation of \eqn{\beta} for diffusion kernel k-means clustering.
-#' It avoids \eqn{\beta} that gives eigenvalues of 0 in the computation of the diffusion kernel. 
-#'
-#' @returns a numeric value of the effective rank.
-#' @references 
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' Roy, O., & Vetterli, M. (2007, September). The effective rank: A measure of effective dimensionality. In 2007 15th European signal processing conference (pp. 606-610). IEEE.
-
-compute_erank_sigma <- function(sigma) {
-  p_k <- sigma/sum(abs(sigma)) # sigma = 0 means redundancy
-  if(any(p_k == 0)) return(1e8) 
-  # p_k[p_k == 0] <- 1 # such that 0*log(0) = 0 as 1*log(1) = 0
-  # the problem with treating 0*log(0) = 0 is that it doesn't optimise clustering given the graph.
-  x_k <- p_k*log(p_k)
-  H_k <- -sum(p_k*log(p_k))
-  erank <- exp(H_k)
-  return(erank)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute the effective rank of the diffusion kernel matrix
-#' 
-#' @description
-#' This function computes and returns the effective rank of the diffusion kerenl matrix following Roy and Vetterli (2007).
-#'
-#' @inheritParams diffusion_kernel
-#' 
-#' @details
-#' As the diffusion kernel is symmetric and positive definite,
-#' its eigenvalues \eqn{e^{\beta\lambda_i}}
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
-#' 
-#' Instead of treating \eqn{0\log{0} = 0}
-#' when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
-#' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-#' to constrain \eqn{\sigma_i > 0}.
-#'
-#' @returns a numeric value of the effective rank.
-#' @references 
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' Roy, O., & Vetterli, M. (2007, September). The effective rank: A measure of effective dimensionality. In 2007 15th European signal processing conference (pp. 606-610). IEEE.
-#' 
-#' @export
-
-compute_erank <- function(L, beta) {
-  # PD matrix which kernel matrix is is symmetric and its eigenvalues are positive.
-  # therefore eigenvalues are essentially the same as singular values.
-  # we can just use exp(-beta*lambda) for optimising beta
-  lambda <- eigen(L, symmetric = TRUE, only.values = T)$values
-  sigma <- exp(-beta*lambda) 
-  erank <- compute_erank_sigma(sigma)
-  return(erank)
-}
-
-#------------------------------------------------------------------------------#
-#' Loss function to minimise the difference in effective ranks
-#' 
-#' @description
-#' This function calculates and returns the absolute difference between the targeted effective rank and
-#' the effective rank of the diffusion kernel for a given `beta` (\eqn{\beta}) based on the effective rank defined by Roy and Vetterli (2007).
-#' 
-#' @inheritParams diffusion_kernel
-#' @param k an integer of the number of clusters.
-#' 
-#' @details
-#' As the diffusion kernel is symmetric and positive definite,
-#' its eigenvalues, defined as  \eqn{e^{\beta\lambda_i}},
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lambda_i} are eigenvalues of \eqn{L}.
-#' This is utilised to calculate the effective rank of the kernel for a given \eqn{\beta} following Roy and Vetterli (2007) and
-#' this loss function is defined as the absolute difference between the effective rank and the target number of clusters.
-#' 
-#' Instead of treating \eqn{0\log{0} = 0}
-#' when \eqn{\sigma_i = 0} in Roy and Vetterli (2007),
-#' 1e8 is returned for its application in the optimisation of the diffusion rate (\eqn{\beta}) for kernel k-means clustering
-#' to constrain \eqn{\sigma_i > 0}.
-#' 
-#' @returns a numeric value of the difference in effective ranks.
-#' @references 
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' Roy, O., & Vetterli, M. (2007, September). The effective rank: A measure of effective dimensionality. In 2007 15th European signal processing conference (pp. 606-610). IEEE.
-
-min_erankdiff <- function(beta, L, k) {
-  # PD matrix which kernel matrix is is symmetric and its eigenvalues are positive.
-  # therefore eigenvalues are essentially the same as singular values.
-  # we can just use exp(-beta*lambda) for optimising beta
-  erank <- compute_erank(L, beta)
-  diff <- abs(erank - k)
-  return(diff)
-}
-
-#------------------------------------------------------------------------------#
-#' Optimise beta for diffusion kernel
-#' 
-#' @description
-#' This function optimises \eqn{\beta} for the diffusion kernel by minimising the absolute difference between
-#' the number of clusters and the effective rank of the kernel matrix. 
-#' 
-#' @inheritParams diffusion_kernel
-#' @param k an integer of the number of clusters.
-#' @param par an numeric initial value for the parameter to be optimised over. The range is \eqn{[0.001, \inf]}. Default is 10.
-#' 
-#' @details
-#' To perform diffusion kernel k-means clustering, the diffusion rate (\eqn{\beta}) has to be optimised to capture the global similarity of
-#' a graph Lapclacian matrix \eqn{L} in the feature space.
-#' 
-#' This is done by minimising the absolute difference between the number of clusters and the effective rank of the kernel matrix where the effective rank,
-#' which is a measure of effective dimensionality of a matrix, follows the definition by Roy and Vetterli (2007).
-#' 
-#' As the diffusion kernel is symmetric and positive definite,
-#' its eigenvalues \eqn{e^{\beta\lambda_i}}
-#' are essentially singular values \eqn{\sigma_i}, where \eqn{\lamdba_i} are eigenvalues of\eqn{L}.
-#' This is utilised to calculate the effective rank of the kernel matrix for a given \eqn{\beta}
-#' and the optimisation is performed by [stats::optim()] using "L-BFGS-B" method with a lower bound of 0.001.
-#'  
-#' @inherit stats::optim return
-#' @seealso [compute_erank()], [stats::optim()]
-#' @references 
-#' Roy, O., & Vetterli, M. (2007, September). The effective rank: A measure of effective dimensionality. In 2007 15th European signal processing conference (pp. 606-610). IEEE.
-#' 
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' @export
-
-optim_beta <- function(L, k, par = 10) {
-  out <- stats::optim(par = par,
-                      fn = min_erankdiff,
-                      L = L,
-                      k = k,
-                      lower = 0.001,
-                      method = "L-BFGS-B",
-                      control = list(factr = 1e11) # less precise but does not affect the result (it actually converges at an optimised beta even though an error message on convergence is returned)
-  )
-  return(out)
-}
-
-#------------------------------------------------------------------------------#
-#' Convert distance matrix to kernel matrix using diffusion kernel
-#' 
-#' @description
-#' This function converts a distance matrix to a kernel matrix using a diffusion kernel.
-#' 
-#' @param distmat a distance matrix.
-#' @param k an integer of the number of clusters.
-#' @param w_knn an integer of the k-th nearest neighbour used in local scaling for computing the adjacency matrix, passed onto [compute_adjacency()]. Default is 7
-#' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()]. Default is TRUE.
-#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel, passed onto [optim_beta()]. The range is \eqn{[0.001, \inf]}. Default is 10.
-#' 
-#' @details
-#' This function takes a distance matrix as input and computes a weighted adjacency matrix using local scaling as proposed by Zelnik-Manor and Perona (2004).
-#' A graph is constructed from the weighted adjacency matrix, represented by a graph Laplacian following Smola and Kondor (2003) and Chung (1997).
-#' Then, it uses a diffusion kernel over the graph with optimised diffusion rate \eqn{\beta} to capture the global structure for kernel-based clustering (Kondor and Lafferty, 2002; Kondor and Vert, 2004).
-#' \eqn{\beta} is optimised by minimising the absolute difference between the number of clusters and the effective rank of the kernel matrix where the effective rank,
-#' which is a measure of effective dimensionality of a matrix, follows the definition in Roy and Vetterli (2007).
-#' 
-#' \eqn{\frac{n}{k}} is used as the k-th nearest neighbour when `w_knn` is NULL for \eqn{n} samples and \eqn{k} clusters.
-#' 
-#' @returns a list of the following objects.
-#' \itemize{
-#'   \item \code{kmat}: a diffusion kernel matrix.
-#'   \item \code{optim_out}: an output of [stats::optim()].
-#' }
-#' 
-#' @seealso [compute_adjacency()], [compute_laplacian()], [diffusion_kernel()], [optim_beta()], [compute_erank()]
-#' 
-#' @references 
-#' Chung, F. R. (1997). Spectral graph theory (Vol. 92). American Mathematical Soc..
-#'
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' Roy, O., & Vetterli, M. (2007, September). The effective rank: A measure of effective dimensionality. In 2007 15th European signal processing conference (pp. 606-610). IEEE.
-#' 
-#' Smola, A. J., & Kondor, R. (2003, August). Kernels and regularization on graphs. In Learning theory and kernel machines: 16th annual conference on learning theory and 7th kernel workshop, COLT/kernel 2003, Washington, DC, USA, august 24-27, 2003. Proceedings (pp. 144-158). Berlin, Heidelberg: Springer Berlin Heidelberg.
-#' 
-#' @export
-
-distmat_to_kmat <- function(distmat, k, w_knn = 7, l_normalise = TRUE, beta_par = 10) {
-  # distance matrix to weighted adjaceny matrix
-  W <- compute_adjacency(distmat = distmat, knn = w_knn)
-  # compute normalised graph Laplacian
-  L <- compute_laplacian(W = W, normalise = l_normalise)
-  # optimise beta
-  optim_out <- optim_beta(L = L, k = k, par = beta_par)
-  beta <- optim_out$par
-  # compute kernel matrix using diffusion kernel
-  kmat <- diffusion_kernel(L, beta)
-  return(list(kmat = kmat, optim_out = optim_out))
-}
-
-#------------------------------------------------------------------------------#
-#' Compute kernel matrix using diffusion kernel from point data
-#' 
-#' @description
-#' This function computes and returns a kernel matrix using a diffusion kernel taking the point data as input.
-#' 
-#' @inheritParams compute_distmat
-#' @inheritParams distmat_to_kmat
-#' 
-#' @details 
-#' This function is a wrapper of [compute_distmat()] and [distmat_to_kmat()]. Only geodesic or euclidean distance is available for computing the distances. See [distmat_to_kmat()] for more details.
-#' 
-#' @inherit distmat_to_kmat return
-#' 
-#' @export
-
-compute_kmat <- function(data, method = "geodesic", k, w_knn = 7, l_normalise = TRUE, beta_par = 10) {
-  distmat <- compute_distmat(data = data, method = method)
-  kmat_out <- distmat_to_kmat(distmat = distmat, k = k , w_knn = w_knn, l_normalise = l_normalise, beta_par = beta_par)
-  return(kmat_out)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute diffusion kernel k-means spatial costs
+#' Compute spatial costs
 #'
 #' @description
-#' This function computes and returns the spatial costs of all points for a given cluster using diffusion kernel k-means clustering.
-#'
-#' @param space_kmat a kernel matrix computed from the spatial distance matrix.
-#' @param clust_points a numeric vector of point indices in the cluster.
-#' @param i an integer of a specific point index. Default is NULL.
-#' @param weights a numeric vector of weights for each data point. Default is NULL.
-#' 
-#' @references
-#' Dhillon, I. S., Guan, Y., & Kulis, B. (2004, August 22). Kernel k-means: spectral clustering and normalized cuts. Proceedings of the Tenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining. KDD04: ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, Seattle WA USA. https://doi.org/10.1145/1014052.1014118
-#'
-#' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
-#' 
-#' @returns a numeric value or vector of the spatial cost(s) for a given cluster.
-#'
-#' @export
-
-compute_spacecost_kkmeans <- function(space_kmat, clust_points, i = NULL, weights = NULL) {
-  w <- weights
-  if (is.null(weights)) {
-    w <- rep(1,nrow(space_kmat))
-  }
-  w_k <- w[clust_points]
-  
-  if (!is.null(i)) {
-    k_ii <- space_kmat[i, i]
-    k_ik <- space_kmat[i , clust_points, drop = FALSE]
-  } else {
-    k_ii <- diag(space_kmat)
-    k_ik <- space_kmat[ , clust_points, drop = FALSE]
-  }
-  k_kk <- space_kmat[clust_points, clust_points, drop = FALSE]
-  # space_cost <- k_ii - 2*rowMeans(k_ik) + mean(k_kk)
-  space_cost <- k_ii - 2*rowSums(t(w_k*t(k_ik)))/sum(w_k) + sum(w_k %*% t(w_k) *k_kk)/(sum(w_k))^2
-  
-  return(space_cost)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute k-medoids spatial costs
-#'
-#' @description
-#' This function computes and returns the spatial costs of all points for a given cluster using k-medoids clustering.
+#' This function computes and returns the spatial costs of all points to the medoid of a given cluster.
 #'
 #' @param space_distmat a spatial distance matrix.
-#' @param clust_points a numeric vector of point indices in the targeted cluster.
-#' @param i an integer of a specific point index. Default is NULL.
+#' @param clust_points a numeric vector of point indices in the cluster.
 #' @param weights a numeric vector of weights for each data point. Default is NULL.
 #' 
-#' @returns a numeric value or vector of the spatial cost(s) for a given cluster.
-#'
-#' @export
+#' @returns a numeric vector of spatial costs of a given cluster.
 
-compute_spacecost_kmedoids <- function(space_distmat, clust_points, i = NULL, weights = NULL) {
+compute_spacecost <- function(space_distmat, clust_points, weights = NULL) {
+  # checks
+  stopifnot("weights must be a numeric vector of the same length as the number of data points" = (is.vector(weights) & is.numeric(weights) & (dim(space_distmat)[1]==length(weights))) | is.null(weights))
+  #-------------------------------------------------------------------#
   w <- weights
   if (is.null(weights)) {
     w <- rep(1,nrow(space_distmat))
@@ -426,43 +61,8 @@ compute_spacecost_kmedoids <- function(space_distmat, clust_points, i = NULL, we
   clust_mat <- space_distmat[clust_points, clust_points, drop = FALSE]
   distsum <- rowSums(clust_mat)
   medoid <- clust_points[which.min(distsum)[1]]
-  if (!is.null(i)) {
-    space_cost <- (space_distmat[i, medoid])
-  } else {
-    space_cost <- (space_distmat[ , medoid])
-  }
-  return(space_cost)
-}
-
-#------------------------------------------------------------------------------#
-#' Compute spatial costs
-#'
-#' @description
-#' This function computes and returns the spatial costs of all points for a given cluster.
-#'
-#' @param space_mat a spatial distance matrix or a kernel matrix computed from the spatial distance matrix.
-#' @param clust_points a numeric vector of point indices in the targeted cluster.
-#' @param method a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".
-#' @param i an integer of a specific point index. Default is NULL.
-#' @param weights a numeric vector of weights for each data point. Default is NULL.
-#' 
-#' @references
-#' Dhillon, I. S., Guan, Y., & Kulis, B. (2004, August 22). Kernel k-means: spectral clustering and normalized cuts. Proceedings of the Tenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining. KDD04: ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, Seattle WA USA. https://doi.org/10.1145/1014052.1014118
-#'
-#' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
-#' 
-#' @returns a numeric value or vector of the spatial cost(s) for a given cluster.
-#'
-#' @export
-
-compute_spacecost <- function(space_mat, clust_points, method = "kmedoids", i = NULL, weights = NULL) {
-  method <- match.arg(method, choices = c("kmedoids", "kkmeans"))
-  if (method == "kmedoids") {
-    space_cost <- compute_spacecost_kmedoids(space_distmat = space_mat, clust_points = clust_points, i = i)
-  }
-  if (method == "kkmeans") {
-    space_cost <- compute_spacecost_kkmeans(space_kmat = space_mat, clust_points = clust_points, i = i, weights = weights)
-  }
+  
+  space_cost <- (space_distmat[ , medoid])
   return(space_cost)
 }
 
@@ -472,89 +72,47 @@ compute_spacecost <- function(space_mat, clust_points, method = "kmedoids", i = 
 #' @description
 #' This function checks and returns a Boolean if any clusters intersect in space.
 #'
-#' @param data a numeric matrix or data frame.
+#' @param data a numeric matrix or data frame of spatial coordinates.
 #' @param clust a numeric vector of the cluster assignment. Default is NULL.
-#' @param coords a vector of strings or numeric values indicating the columns of coordinates (longitude, latitide). Default is the first two columns.
+#' @param coords a vector of strings or numeric values indicating the columns of spatial coordinates (e.g. "longitude" and "latitude"). Default is the first two columns.
 #' @param crs a numeric value of the Coordinate Reference System passed on to [sf::st_as_sf()]. Default is 4326.
-#' @param hull_convex_ratio a numeric value controlling the convexity of the hulls passed onto [sf::st_concave_hull()]. 1 returns convex and 0 maximally concave hulls. Default is 0.5.
+#' @param hull_convex_ratio a numeric value indicating the convexity of the hulls passed onto [sf::st_concave_hull()]. 1 returns convex and 0 maximally concave hulls. Default is 0.5.
 #'
 #' @returns TRUE or FALSE
-#'
-#' @export
 
-intersects_bool <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hull_convex_ratio = 0.5) {
+check_intersects <- function(data, clust = NULL, coords = c(1,2), crs = 4326, hull_convex_ratio = 0.5) {
+  # checks
+  stopifnot("data must be a numeric matrix or data frame of spatial coordinates." = (is.matrix(data) | is.data.frame(data)) & is.numeric(as.matrix(data)))
+  #-------------------------------------------------------------------#
+  # st_union breaks when s2 is on
   suppressMessages(sf::sf_use_s2(FALSE))
   data <- as.data.frame(data)
   #-------------------------------------------------------------------#
-  # if (is.null(crs)) { crs <- NA } # Euclidean
   if (!is.null(clust)) { data$clust <- clust }
   #-------------------------------------------------------------------#
   data_sf <- sf::st_as_sf(data, coords = coords, crs = crs)
   #-------------------------------------------------------------------#
   # obtain convex/concave hulls
   suppressMessages({
-  hulls <- stats::aggregate(data_sf$geometry, by = list(clust = data_sf$clust), function(x){
-    x <- sf::st_combine(x)
-    x <- sf::st_union(x, by_feature = TRUE)
-    return(x)
-    }
-    ) 
-  hulls <- sf::st_as_sf(hulls)
-  hulls <- sf::st_concave_hull(hulls, ratio = hull_convex_ratio) # convex hulls
-  #-------------------------------------------------------------------#
-  # indicate TRUE/FALSE if there are any intersects
-  hulls <- sf::st_make_valid(hulls)
-  intersects <- sf::st_intersects(hulls$geometry, sparse = F)
+    hulls <- stats::aggregate(data_sf$geometry, by = list(clust = data_sf$clust), function(x){
+      x <- sf::st_combine(x)
+      x <- sf::st_union(x, by_feature = TRUE)
+      # If by_feature is TRUE each feature geometry is unioned individually. This can for instance be used to resolve internal boundaries after polygons were combined using st_combine. https://r-spatial.github.io/sf/reference/geos_combine.html
+      return(x)
+    }) 
+    hulls <- sf::st_as_sf(hulls)
+    hulls <- sf::st_concave_hull(hulls, ratio = hull_convex_ratio) # convex hulls
+    #-------------------------------------------------------------------#
+    # mark TRUE/FALSE for each comparison
+    hulls <- sf::st_make_valid(hulls)
+    intersects <- sf::st_intersects(hulls$geometry, sparse = F)
   })
   diag(intersects) <- NA
   bool <- if (any(intersects == TRUE, na.rm = TRUE)) TRUE else FALSE
   #-------------------------------------------------------------------#
+  # reset s2
+  suppressMessages(sf::sf_use_s2(TRUE))
   return(bool)
-}
-
-#------------------------------------------------------------------------------#
-#' Reorder clusters
-#' 
-#' @description
-#' This function reorders and returns a vector of the cluster assignment in ascending order.
-#'
-#' @param clust a numeric vector of the cluster assignment.
-#'
-#' @returns a numeric vector of the reordered cluster assignment.
-
-reorder_clust <- function(clust) {
-  # e.g. c(1,4,4,2) will become c(1,2,2,3)
-  if(length(unique(clust)) == 1) return(rep(1, length(clust)))
-  #-------------------------------------------------------------------#
-  sets <- list()
-  for (i in 1:length(clust)) {
-    sets[[i]] <- which(clust == clust[i])
-    if (length(sets[[i]]) == 0) sets[[i]] <- NA
-  }
-  #-------------------------------------------------------------------#
-  max_set_length <- max(sapply(sets, length))
-  sets <- lapply(sets, function(x) if (length(x) < max_set_length) {c(x, rep(0, max_set_length - length(x)))} else {x})
-  sets <- do.call(rbind, sets)
-  sets <- unique(sets)
-  sets <- as.matrix(sets[rowSums(sets) != 0, ]) # remove empty clusters
-  #-------------------------------------------------------------------#
-  # put NA to the back
-  # count the number of rows with NA
-  n_row <- nrow(sets)
-  n_row_na <- length(unique(which(is.na(sets), arr.ind = T)[,"row"]))
-  if (n_row_na > 0) {
-    sets <- as.matrix(stats::na.omit(sets))
-    sets <- rbind(sets,NA)
-  }
-  #-------------------------------------------------------------------#
-  # reorder cluster labels
-  for (i in 1:nrow(sets)) {
-    for (j in 1:ncol(sets)) {
-      clust[sets[i,j]] <- i
-    }
-  }
-  #-------------------------------------------------------------------#
-  return(clust)
 }
 
 #------------------------------------------------------------------------------#
@@ -563,163 +121,102 @@ reorder_clust <- function(clust) {
 #' @description
 #' This function evaluates the performance of clustering.
 #'
-#' @inheritParams intersects_bool
+#' @inheritParams check_intersects
 #' @inheritParams compute_spacecost
-#' @param age a string or numeric value indicating the column of age. Default is the third column.
-#' @param space_clustmethod a string of the clustering method. Either "kmedoids" or "kkmeans" is available. Default is "kmedoids".
+#' @param data a data frame with spatial coordinates, age and cluster of the data 
+#' @param age a string or numeric value indicating the column of age of the data. Default is the third column.
 #' @param space_distmat a spatial distance matrix. Default is NULL.
-#' @param space_kmat a kernel matrix computed from the spatial distance matrix. Default is NULL.
-#' @param space_distmethod a string of the method, used when `space_kmat` and `space_distmat` are not specified. Either "geodesic" or "euclidean" is available. Default is "geodesic".
-#' @param w_knn an integer of the k-th nearest neighbour, used in local scaling for computing the adjacency matrix with [compute_adjacency()] when `space_kmat` is not supplied. Default is 7.
-#' @param l_normalise a Boolean to normalise the graph Laplacian, passed onto [compute_laplacian()] when `space_kmat` is not supplied. Default is TRUE.
-#' @param beta_par an numeric initial value for the parameter \eqn{\beta} to be optimised over for the diffusion kernel with [optim_beta()] when `space_kmat` is not supplied. The range is \eqn{[0.001, \inf]}. Default is 10.
+#' @param space_distmethod a string of the method, used when `space_distmat` is not specified. Either "geodesic" or "euclidean" is available. Default is "geodesic".
 #' 
 #' @details
-#' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data points and \eqn{k} is the number of clusters.
+#' The size threshold of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data points and \eqn{k} is the number of clusters.
 #'
-#' @returns a list of the following objects.
-#' \itemize{
-#'   \item \code{summary}: a data frame of summary statistics.
-#'   \item \code{clust_below_size}: a numeric vector of clusters below the critical size.
-#'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} when `space_kmat` is not supplied.
-#' }
+#' @returns a data frame of summary statistics.
 
 eval_blobs <- function(data,
                        coords = c(1,2),
                        age = 3,
                        crs = 4326,
-                       space_clustmethod = "kmedoids",
-                       hull_convex_ratio = 0,
-                       space_kmat = NULL,
+                       hull_convex_ratio = 0.5,
                        space_distmat = NULL,
                        space_distmethod = NULL,
-                       w_knn = NULL,
-                       l_normalise = NULL,
-                       beta_par = NULL,
                        weights = NULL) {
-  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  
+  # checks
+  stopifnot("data must be a data frame with spatial coordinates, age and cluster." = is.data.frame(data) & !is.null(data[ , coords]) & !is.null(data[ , age]) & !is.null(data$clust))
+  #-------------------------------------------------------------------#
   # total number of points
   N <- nrow(data)
   # total number of clusters
   k <- length(unique(stats::na.omit(data$clust))) # NA is excluded
   # initialise empty vectors 
-  space_d <- time_range <- time_evenness <- n <- numeric(k)
+  space_d <- time_r <- time_e <- n <- numeric(k)
   #-------------------------------------------------------------------#
-  if (space_clustmethod == "kkmeans") {
-    # compute space_kmat
-    if (is.null(space_kmat)) {
-      if (is.null(w_knn)) w_knn <- 7
-      if (is.null(l_normalise)) l_normalise <- TRUE
-      if (is.null(beta_par)) beta_par <- 10
-      #-------------------------------------------------------------------#
-      if(is.null(space_distmat)) {
-        if (is.null(space_distmethod)) {
-          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-          message(paste0(space_distmethod," is used to compute space_distmat"))
-          } else {
-            space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-            }
-        space_kmat_out <- compute_kmat(data = data[, coords],
-                                       method = space_distmethod,
-                                       k = k,
-                                       w_knn = w_knn,
-                                       l_normalise = l_normalise,
-                                       beta_par = beta_par)
-        } else {
-          space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                            k = k,
-                                            w_knn = w_knn,
-                                            l_normalise = l_normalise,
-                                            beta_par = beta_par)
-          }
-      space_kmat <- space_kmat_out$kmat
-      space_kmat_optim_out <- space_kmat_out$optim_out
-      } else {
-        space_kmat_optim_out <- NULL # As it is one of the returned items
-      }
-    space_mat <- space_kmat
-  }
-  
-  if (space_clustmethod == "kmedoids"){
-    if(is.null(space_distmat)) {
-      if (is.null(space_distmethod)) {
-        space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-        message(paste0(space_distmethod," is used to compute space_distmat"))
-      } else {
-        space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-      }
-      space_distmat <- compute_distmat(data = data[, coords],
-                                   method = space_distmethod)
-    }
-    space_mat <- space_distmat
-    space_kmat_optim_out <- NULL # As it is one of the returned items
-  }
+  # check if is.null(space_distmat)
+  space_distmat <- check_space_distmat(space_distmat = space_distmat, space_distmethod = space_distmethod)
   #-------------------------------------------------------------------#
-  # loop over k to obtain within cluster statistics
+  # loop over K to obtain within cluster statistics
   for (j in 1:k) {
     clust_points <- which(data$clust == j)
     if (length(clust_points) == 0) next
     data_k <- subset(data, data$clust == j)
     #-------------------------------------------------------------------#
     # spatial objective
-    space_d[j] <- sum(compute_spacecost(space_mat = space_mat, clust_points = clust_points,
-                                         i = NULL, method = space_clustmethod, weights = weights)[clust_points])
+    space_d[j] <- sum(compute_spacecost(space_distmat = space_distmat,
+                                        clust_points = clust_points,
+                                        weights = weights)[clust_points])
     #-------------------------------------------------------------------#
     # temporal objectives
-    time_range[j] <- max(data_k[ , age], na.rm = T) - min(data_k[ ,age], na.rm = T)
-    time_evenness[j] <- 1 / (1 + stats::var(diff(sort(data_k[ , age])))) # NA if there are fewer than 3 data points
+    age <- data_k[ , age] 
+    time_r[j] <- max(age, na.rm = T) - min(age, na.rm = T)
+    time_e[j] <- 1 / (1 + stats::var(diff(sort(age)))) # NA if there are fewer than 3 data points
     #-------------------------------------------------------------------#
-    # other constraint related statistics
+    # clust size
     n[j] <- length(clust_points)
   }
   #-------------------------------------------------------------------#
   # calculate the summary statistics
   space_wcd <- sum(space_d)
-  time_wcr <- mean(time_range, na.rm = TRUE)
-  time_wce <- mean(time_evenness, na.rm = TRUE) # na.rm = TRUE to acess the overall performance as we normally do not care clusters with fewer than 3 points
+  time_wcr <- mean(time_r, na.rm = TRUE)
+  time_wce <- mean(time_e, na.rm = TRUE)
+  # na.rm = TRUE to assess the overall performance as we do not care clusters with fewer than 3 points
   #-------------------------------------------------------------------#
-  # evaluate failed clust
-  # n.points must be > N / k / 2
-  clust_below_size <- which(n < N/k/2)
-  n_fail <- sum(n[clust_below_size])
+  # flag the number of clusters below the threshold
+  clust_sizef <- length(which(n < N/k/2))
   #-------------------------------------------------------------------#
   # evaluate if blobs are intersecting in space
-  intersects <- intersects_bool(data = data, coords = coords, crs = crs, hull_convex_ratio = hull_convex_ratio)
+  intersects <- check_intersects(data = data, coords = coords, crs = crs, hull_convex_ratio = hull_convex_ratio)
   #-------------------------------------------------------------------#
   # return a data frame of all the statistics
   summary <- data.frame(k = k,
                         space_wcd = space_wcd,
                         time_wcr = time_wcr,
                         time_wce = time_wce,
-                        n_fail = n_fail,
-                        intersects = intersects)
-  #-------------------------------------------------------------------#
-  eval_blobs_out <- list(summary = summary,
-                         clust_below_size = clust_below_size,
-                         space_kmat_optim_out = space_kmat_optim_out)
-  return(eval_blobs_out)
+                        intersects = intersects,
+                        clust_sizef = clust_sizef)
+  
+  return(summary)
 }
 
 #------------------------------------------------------------------------------#
 #' Assign the starting cluster members
 #' 
 #' @description
-#' This function assigns the starting cluster members by approximating the maximum spatial separation between points or by random assignment.
+#' This function assigns the initial cluster points by approximating the maximum spatial separation between points or by random assignment.
 #'
-#' @param data a data matrix or data frame.
+#' @param data a data matrix or data frame with spatial coordinates and age of the data.
 #' @param k an integer of the number of clusters.
-#' @param random_start a Boolean to randomise starting cluster members. Default is FALSE.
+#' @param random_init a Boolean to randomly select initial cluster points. Default is FALSE.
 #' @inheritParams compute_spacecost
 #'
-#' @returns a data frame with assigned starting clusters as a column.
+#' @returns a data frame with spatial coordinates, age, cluster and order of the data.
 
-start_blobs <- function(data, k, space_mat, method = "kmedoids", random_start = FALSE) {
-  method <- match.arg(method, choices = c("kmedoids", "kkmeans"))
-  if (random_start == TRUE) {
+init_blobs <- function(data, k, space_distmat, random_init = FALSE) {
+  if (random_init == TRUE) {
     data <- as.data.frame(data)
     data$clust <- NA
-    start <- sample(1:nrow(data), k)
-    data$clust[start] <- 1:k
+    init <- sample(1:nrow(data), k)
+    data$clust[init] <- 1:k
     data$order <- 1:nrow(data)
     return(data)
   }
@@ -736,8 +233,8 @@ start_blobs <- function(data, k, space_mat, method = "kmedoids", random_start = 
   # start from k roughly equally spaced random locations 
   # (just permute a bunch and pick the one with the least smallest distance)
   N <- 100
-  mat <- matrix(, N, k)
-  min_dist <- numeric(N) ###########
+  mat <- matrix( , N, k)
+  min_dist <- numeric(N)
   #-------------------------------------------------------------------#
   for(n in 1:N){
     i <- sort(sample(1:nrow(data), size = k)) # sample k points from the data, sort them 
@@ -745,26 +242,15 @@ start_blobs <- function(data, k, space_mat, method = "kmedoids", random_start = 
     cb <- utils::combn(k, 2) # all combinations of k chooses 2 by column
     NC <- ncol(cb) # NC number of combinations
     dist <- numeric(NC)
-    # similarities <- numeric(NC) # a vector of distances of NC long
-    for(c in 1:NC) dist[c] <- space_mat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
-    
-    if (method == "kmedoids") {
-      dist <- dist
-    }
-    
-    if (method == "kkmeans") {
-      dist <- -dist # larger k(x,y) means closer
-    }
-    
+    for(c in 1:NC) dist[c] <- space_distmat[ i[cb[1, c]], i[cb[2, c]] ] # extract from distance matrix the distances for all combinations of points
     min_dist[n] <- min(dist)
-
   }
   #-------------------------------------------------------------------#
   # pick the set with largest minimum distance between two points to ensure maximum separation between k points;
   # pick the first one if two are tied 
-  start <- mat[which(min_dist == max(min_dist))[1], ]
+  init <- mat[which(min_dist == max(min_dist))[1], ]
   # Assign cluster memberships to the starting points
-  data[start, "clust"] <- 1:k
+  data[init, "clust"] <- 1:k
   data <- as.data.frame(data)
   #-------------------------------------------------------------------#
   return(data)
@@ -776,69 +262,53 @@ start_blobs <- function(data, k, space_mat, method = "kmedoids", random_start = 
 #' @description
 #' This function assigns clusters for a given k and r.
 #' 
-#' @param data a data matrix or data frame.
+#' @param data a data frame output from [init_blobs()].
 #' @param k an integer of the number of clusters.
-#' @param r an numeric value of the spatial relative weight. It must be \eqn{[0,1]}.
+#' @param r an numeric value of the spatial relative weight of range \eqn{[0,1]}.
 #' @param age a string or numeric value indicating the column of age. Default is the third column.
 #' @inheritParams compute_spacecost
 #'
-#' @details
-#' A diffusion kernel is applied to compute the distance to the centroid in space.
-#' 
-#' @seealso [compute_spacecost()]
-#' 
-#' @references
-#' Dhillon, I. S., Guan, Y., & Kulis, B. (2004, August 22). Kernel k-means: spectral clustering and normalized cuts. Proceedings of the Tenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining. KDD04: ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, Seattle WA USA. https://doi.org/10.1145/1014052.1014118
-#' 
-#' Kondor, R. I., & Lafferty, J. (2002, July). Diffusion kernels on graphs and other discrete structures. In Proceedings of the 19th international conference on machine learning (Vol. 2002, pp. 315-322).
-#' 
-#' Kondor, R., & Vert, J. P. (2004). Diffusion kernels. kernel methods in computational biology, 171-192.
-#' 
-#' Schölkopf, B., Smola, A., & Müller, K.-R. (1998). Nonlinear component analysis as a kernel eigenvalue problem. Neural Computation, 10(5), 1299–1319.
-#'
-#' @returns a data frame with assigned clusters as a column.
+#' @returns a data frame with spatial coordinates, age, cluster and order of the data.
 
-find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weights = NULL) {
-  method <- match.arg(method, choices = c("kmedoids", "kkmeans"))
-  if (is.null(data$order)) stop("Did you forget to run start_blobs()?")
-  #-------------------------------------------------------------------#
+find_blobs <- function(data, k, r, space_distmat, age = 3, weights = NULL) {
   # a bit faster to handle data as a matrix
   data <- as.matrix(data)
   #-------------------------------------------------------------------#
   # for indexing speed, keep those assigned at the top
-  data <- data[order(data[ ,"clust"]), ]
+  data <- data[order(data[ , "clust"]), ]
   #-------------------------------------------------------------------#
   # randomise the order of the points to be assigned (tba)
-  tba_points <- which(is.na(data[ ,"clust"])) # to be assigned
+  tba_points <- which(is.na(data[ , "clust"])) # to be assigned
   # for when iteration is implemented there will be no NA
   tba_points <- if (length(tba_points) == 0) 1:nrow(data) else tba_points
   tba_points <- sample(tba_points)
   a_points <- which(!1:nrow(data) %in% tba_points) # assigned
   # assigned at the top, randomised unassigned rows that follow
-  data <- data[c(a_points,tba_points), ] 
+  data <- data[c(a_points, tba_points), ] 
   #-------------------------------------------------------------------#
-  # Reorder kmat to match the reordered data
-  order <- data[ ,"order"]
-  space_mat <- space_mat[order, order]
+  # Reorder distmat to match the reordered data
+  order <- data[ , "order"]
+  space_distmat <- space_distmat[order, order]
   #-------------------------------------------------------------------#
   # Extract clust to make the code cleaner
-  clust <- data[,"clust"]
+  clust <- data[ , "clust"]
   #-------------------------------------------------------------------#
   # initialise stat matrices for the unassigned points
   start <- if (length(a_points) > nrow(data)) 1 else length(a_points) + 1
   N <- length(start:nrow(data))
   space_cost <- time_cost <- n <- numeric(k)
   #-------------------------------------------------------------------#
-  # precompute spacecost to avoid O(n^3/k)
-  # O(c^2) ~ O((n/k)^2) 
-  # O(c^2 * k) ~ O((n^2/k) 
+  # precompute spacecost
   space_costmat <- vapply(1:k, function(j) {
     clust_points <- which(clust == j)
-    compute_spacecost(space_mat = space_mat,
+    compute_spacecost(space_distmat = space_distmat,
                       clust_points = clust_points,
                       method = method,
                       weights = weights)
   }, FUN.VALUE = numeric(nrow(data)))
+  
+  # prefetch age column for time computation
+  age <- data[ , age]
   #-------------------------------------------------------------------#
   # loop through every point (incremental updating)
   for (i in start:nrow(data)) {
@@ -859,7 +329,7 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
       if (length(clust_points_tmp) == 0) {
         time_cost[j] <- 0  # only i was in the cluster
       } else {
-        time_cost[j] <- min(abs(data[i, age] - data[clust_points_tmp, age]))
+        time_cost[j] <- min(abs(age[i] - age[clust_points_tmp]))
       }
     }
     #-------------------------------------------------------------------#
@@ -871,14 +341,13 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
     #-------------------------------------------------------------------#
     # weighted scalarising (into a single cost)
     cost <- space_cost_norm*r - time_cost_norm*(1-r)
-    # cost <- space_cost_norm*r + time_cost_norm*(1-r)
     #-------------------------------------------------------------------#
     # assign cluster
     # check if there are tied clusters
     clust_tmp <- which(cost == min(cost, na.rm = T))
     #-------------------------------------------------------------------#
     if (length(clust_tmp) > 1) {
-      # first check if one of those have fewer points
+      # check if one of those has fewer points
       n_clust_tmp <- n[clust_tmp]
       clust_tmp_minn_idx <- which(n_clust_tmp == min(n_clust_tmp))
       
@@ -896,54 +365,43 @@ find_blobs <- function(data, k, r, space_mat, age = 3, method = "kmedoids", weig
   }
   #-------------------------------------------------------------------#
   # Put the data back to order
-  data[ ,"clust"] <- clust
-  data <- data[order(data[ ,"order"]), ]
+  data[ , "clust"] <- clust
+  data <- data[order(data[ , "order"]), ]
   data <- as.data.frame(data)
   #-------------------------------------------------------------------#
   return(data)
 }
 
 #------------------------------------------------------------------------------#
-#' Core local-search algorithm
+#' Core local-search algorithm #### come back here
 #' 
 #' @description
 #' This function performs an iterative bi-objective local search algorithm to assign clusters for a given k and r.
 #' 
-#' @inheritParams start_blobs
+#' @inheritParams init_blobs
 #' @inheritParams find_blobs
 #' @inheritParams eval_blobs
 #' @param iter an integer of the number of iterations. Default is 10.
 #' @param converge_ari a numeric value of the Adjusted Rand Index (ARI) that sets the convergence threshold between iterations. It must be \eqn{[0,1]}. Default is 1.
-#' @param filter_intersects a Boolean to remove an assignment with intersects in space? Default is TRUE.
-#' @param filter_clustsize a Boolean to assign NA to clusters below the critical size. Default is TRUE.
+#' @param filter_intersects a Boolean to remove an assignment with intersects in space. Default is TRUE.
+#' @param filter_clustsize a Boolean to remove an assignment with clusters below the expected size. Default is TRUE.
 #' @param max_na a numeric value of the maximum proportion of NAs allowed. It must be \eqn{[0,1]}. Default is 0.05.
 #'
 #' @details
-#' When "kkmeans" method is specified, a diffusion kernel is applied to compute the distance to the centroid in space for
-#' kernel k-means clustering in space. 
-#' See [distmat_to_kmat()] for more details for converting a distance matrix to a kernel matrix.
+#' Local search completes when consecutive iterations reach ARI specified by `converge_ari`, or else 1 (identical) , after at least 2 iterations.
 #'
-#' Clusters are assigned in every iteration. It iterates until the set length or convergence. 
-#'
-#' When `converge_ari` is specified, convergence between iterations is defined.
-#' The search will complete when ARI meets the threshold and least 3 iterations are run.
-#'
-#' The critical size of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data point and \eqn{k} is the number of clusters.
+#' The size threshold of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is the number of data points and \eqn{k} is the number of clusters.
 #'
 #' @returns 
-#' a numeric value of 1 if the search result is removed due to the presence of intersects,
-#' 2 if removed due to the proportion of NAs exceeding `max_na`,
-#' 3 if removed due to 1 resulting cluster,
-#' or a list of the following objects if the search is meets the constraints,
+#' a numeric value of 1 when the output is invalid,
+#' otherwise a data frame with the following elements
 #' \itemize{
 #'   \item \code{data}: a data frame of the input data with assigned clusters as a column.
-#'   \item \code{summary}: a data frame of the summary statistics.
-#'   \item \code{clust_below_size}: a numeric vector of clusters below the critical size.
+#'   \item \code{summary}: a data frame of the summary statistics. 
 #'   \item \code{trace}: a data frame of the summary statistics per iteration.
-#'   \item \code{space_kmat_optim_out}: an output of [stats::optim()] from the optimisation of \eqn{\beta} in [distmat_to_kmat()] when `space_kmat` is not supplied.
 #' }
 #'
-#' @seealso [distmat_to_kmat()], [sf::st_as_sf()]
+#' @seealso [sf::st_as_sf()]
 #'
 #' @export
 
@@ -954,79 +412,26 @@ blob_search <- function(data,
                         converge_ari = 1,
                         coords = c(1,2),
                         age = 3,
-                        space_clustmethod = "kmedoids",
                         crs = 4326,
-                        hull_convex_ratio = 0,
-                        random_start = FALSE,
+                        hull_convex_ratio = 0.5,
+                        random_init = FALSE,
                         filter_intersects = TRUE,
                         filter_clustsize = TRUE,
-                        max_na = 0.05,
-                        space_kmat = NULL,
                         space_distmat = NULL,
                         space_distmethod = NULL,
-                        w_knn = NULL,
-                        l_normalise = NULL,
-                        beta_par = NULL,
                         weights = NULL) {
   
-  space_clustmethod <- match.arg(space_clustmethod, choices = c("kmedoids", "kkmeans"))
+  # checks
+  
   #-------------------------------------------------------------------#
   # select the relevant columns
   data <- data[, c(coords,age)]
   #-------------------------------------------------------------------#
-  if (space_clustmethod == "kkmeans") {
-    # compute space_kmat
-    if (is.null(space_kmat)) {
-      if (is.null(w_knn)) w_knn <- 7
-      if (is.null(l_normalise)) l_normalise <- TRUE
-      if (is.null(beta_par)) beta_par <- 10
-      #-------------------------------------------------------------------#
-      if(is.null(space_distmat)) {
-        if (is.null(space_distmethod)) {
-          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-          message(paste0(space_distmethod," is used to compute space_distmat"))
-        } else {
-          space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-        }
-        space_kmat_out <- compute_kmat(data = data[, c(1,2)],
-                                       method = space_distmethod,
-                                       k = k,
-                                       w_knn = w_knn,
-                                       l_normalise = l_normalise,
-                                       beta_par = beta_par)
-      } else {
-        space_kmat_out <- distmat_to_kmat(distmat = space_distmat,
-                                          k = k,
-                                          w_knn = w_knn,
-                                          l_normalise = l_normalise,
-                                          beta_par = beta_par)
-      }
-      space_kmat <- space_kmat_out$kmat
-      space_kmat_optim_out <- space_kmat_out$optim_out
-    } else {
-      space_kmat_optim_out <- NULL # As it is one of the returned items
-    }
-    space_mat <- space_kmat
-  }
-  
-  if (space_clustmethod == "kmedoids"){
-    if(is.null(space_distmat)) {
-      if (is.null(space_distmethod)) {
-        space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-        message(paste0(space_distmethod," is used to compute space_distmat"))
-      } else {
-        space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
-      }
-      space_distmat <- compute_distmat(data = data[, c(1,2)],
-                                       method = space_distmethod)
-    }
-    space_mat <- space_distmat
-    space_kmat_optim_out <- NULL # As it is one of the returned items
-  }
+  space_distmat <- check_space_distmat(space_distmat, space_distmethod)
   #-------------------------------------------------------------------#
   # search algorithm
-  # start_blobs() to pick centroids
-  data <- start_blobs(data = data, k = k, space_mat = space_mat, method = space_clustmethod, random_start = random_start)
+  # init_blobs() to pick medoids
+  data <- init_blobs(data = data, k = k, space_distmat = space_distmat, random_init = random_init)
   #-------------------------------------------------------------------#
   # initialise counter counting find_blobs()
   t <- 0
@@ -1037,7 +442,7 @@ blob_search <- function(data,
     data_old <- data
     #-------------------------------------------------------------------#
     # find_blobs()
-    data <- find_blobs(data = data, k = k, r = r, age = 3, space_mat = space_mat, method = space_clustmethod, weights = weights)
+    data <- find_blobs(data = data, k = k, r = r, space_distmat = space_distmat, weights = weights)
     #-------------------------------------------------------------------#
     # count find_blobs() executed
     t <- t + 1
@@ -1049,19 +454,15 @@ blob_search <- function(data,
       #-------------------------------------------------------------------#
       # eval_blobs()
       eval_out <- eval_blobs(data,
-                             coords = c(1,2),
-                             age = 3,
                              crs = crs,
                              hull_convex_ratio = hull_convex_ratio,
                              space_distmat = space_distmat,
-                             space_kmat = space_kmat,
-                             space_clustmethod = space_clustmethod,
                              weights = weights)
-      clust_below_size <- eval_out$clust_below_size
-      trace_newrow <- eval_out$summary
-      trace_newrow$iter <- t
-      trace_newrow$ari <- ari
-      trace <- rbind(trace, trace_newrow)
+      clust_sizef <- eval_out$clust_sizef
+      trace_row <- eval_out$summary
+      trace_row$iter <- t
+      trace_row$ari <- ari
+      trace <- rbind(trace, trace_row)
       #-------------------------------------------------------------------#
       # if converged between t and t-1, break
       if (!is.null(converge_ari)) {
@@ -1072,7 +473,7 @@ blob_search <- function(data,
   #-------------------------------------------------------------------#
   trace$r <- r
   summary <- trace[nrow(trace), ]
-  # order is not useful in the result, remove the column
+  # order is not useful for output, remove the column
   data$order <- NULL
   #-------------------------------------------------------------------#
   # filters / constraints
@@ -1102,13 +503,9 @@ blob_search <- function(data,
       #-------------------------------------------------------------------#
       # update eval_out$summary
       eval_out_updated <- eval_blobs(data,
-                                     coords = c(1,2),
-                                     age = 3,
                                      crs = crs,
                                      hull_convex_ratio = hull_convex_ratio,
                                      space_distmat = space_distmat,
-                                     space_kmat = space_kmat,
-                                     space_clustmethod = space_clustmethod,
                                      weights = weights)
       updated_cols <- intersect(names(summary), names(eval_out_updated$summary))
       summary[ , updated_cols] <- eval_out_updated$summary[ , updated_cols]
@@ -1189,7 +586,7 @@ find_dup <- function (clust, ari = 1) {
   # subset the columns of duplicated pairs
   pairs_dup <- pairs[, pairs_dup_idx, drop = FALSE]
   #-------------------------------------------------------------------#
-  # if a ~ b and b ~ c, then not necessarily a ~ c ####
+  # if a ~ b and b ~ c, then not necessarily a ~ c
   # the following steps makes sure they are the pairs with ari >= ari.dup 
   if (ncol(pairs_dup) > 1) {
     #-------------------------------------------------------------------#

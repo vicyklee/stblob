@@ -605,7 +605,7 @@ eval_moo <- function(batch_list, obj) {
       class(pop_moo) <- "pop_moo"
       return(pop_moo)
     }
-    pop_pareto <- find_pareto(pop, obj = obj_input)
+    pop_pareto <- find_pareto(pop, obj = obj_input) ####
     pareto_summary <- subset(pop_pareto$summary, pareto == 1)
     # objspace for normalisation
     summary <- pop$summary
