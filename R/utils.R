@@ -1,6 +1,6 @@
-# compute_spacecost -----------------------------------------------------------
-compute_space_costs <- function(space_distmat, clust_points, weights = NULL) {
-  weights <- weights %||% rep(1,nrow(space_distmat))
+# compute_space_costs ---------------------------------------------------------
+compute_space_costs <- function(space_distmat, clust_points) {
+  weights <- rep(1,nrow(space_distmat)) # deprecated weights option
   clust_weights <- weights[clust_points]
   
   # find the medoid # weighted
@@ -14,38 +14,80 @@ compute_space_costs <- function(space_distmat, clust_points, weights = NULL) {
 }
 
 # check_space_distmat ---------------------------------------------------------
-check_space_distmat <- function(data, coords = c(1L, 2L), space_distmat, space_distmethod) {
+check_space_distmat <- function(data,
+                                coords,
+                                space_distmat,
+                                space_distmethod) {
   if(is.null(space_distmat)) {
+    
     if (is.null(space_distmethod)) {
       space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       message(paste0(space_distmethod," is used to compute space_distmat"))
     } else {
       space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
     }
+    
     space_distmat <- compute_distmat(data = data[coords], method = space_distmethod)
+    
   } else {
+    
+    stopifnot(
+      "'space_distmat' must be a numeric matrix or a 'dist' object" =
+        is.numeric(space_distmat),
+      "'space_distmat' must have the same number of rows as 'data'" =
+        nrow(data) == nrow(space_distmat)
+    )
+    
     space_distmat <- as.matrix(space_distmat)
+    
   }
   return(space_distmat)
 }
 
-# check_col_ref ---------------------------------------------------------------
-check_col_ref <- function(x, data, arg_name, expected_length) {
-  if (length(x) != expected_length) {
-    stop(sprintf("`%s` must have length %d", arg_name, expected_length))
-  }
+# shannon_entropy -------------------------------------------------------------
+shannon_entropy <- function(x, n = length(unique(x)), base = 2, normalise = TRUE) {
+  p <- as.numeric(table(x)/length(x))
+  I <- log(p, base)
+  I[p==0] <- 0
+  H <- -sum(p*I)
+  if (normalise == TRUE) H <- H/log(n, base)
+  return(H)
+}
+
+# check_opt_args --------------------------------------------------------------
+check_opt_args <- function(ls_tol = 0,
+                           chebyshev_rho = 1e-4, 
+                           filter_intersects = TRUE,
+                           hull_convex_ratio = 0.5,
+                           hull_crs = 4326,
+                           filter_clustsize = TRUE, 
+                           outlier_removal = FALSE,
+                           outlier_iqrm = 1.5,
+                           random_init = FALSE,
+                           sf_use_s2 = TRUE,
+                           ...) {
   
-  if (is.character(x)) {
-    if (!all(x %in% names(data))) {
-      stop(sprintf("`%s` must reference valid column names in `data`", arg_name))
-    }
-  } else if (is.numeric(x)) {
-    if (!all(x >= 1L & x <= ncol(data))) {
-      stop(sprintf("`%s` must reference valid column indices in `data`", arg_name))
-    }
-  } else {
-    stop(sprintf("`%s` must be either character (column names) or numeric (column indices)", arg_name))
-  }
+  stopifnot(
+    "'ls_tol' must be between 0 and 1" =
+      is.numeric(ls_tol) && ls_tol >= 0 && ls_tol <= 1,
+    "'chebyshev_rho' must be non-negative" =
+      is.numeric(chebyshev_rho) && chebyshev_rho >= 0,
+    "'filter_intersects' must be logical" =
+      is.logical(filter_intersects),
+    "'hull_convex_ratio' must be between 0 and 1" =
+      is.numeric(hull_convex_ratio) && hull_convex_ratio >= 0 && hull_convex_ratio <= 1,
+    "'hull_crs' cannot retrieve coordinate reference system" =
+      is.na(hull_crs) | !is.na(sf::st_crs(hull_crs)$wkt),
+    "'filter_clustsize' must be logical" =
+      is.logical(filter_clustsize),
+    "'outlier_removal' must be logical" =
+      is.logical(outlier_removal),
+    "'outlier_iqrm' must be non-negative" =
+      is.numeric(outlier_iqrm) && outlier_iqrm >= 0,
+    "'random_init' must be logical" =
+      is.logical(random_init),
+    "'sf_use_s2' must be logical" = is.logical(sf_use_s2)
+  )
   
   invisible(NULL)
 }
@@ -87,75 +129,21 @@ reorder_clust <- function(clust) {
   return(clust)
 }
 
-# find_dup --------------------------------------------------------------------
-find_dup <- function (clust, ari = 1) {
-  # as NA is ignored by mclust::adjustedRandIndex()
-  clust[is.na(clust)] <- 0
-  # number of solutions
-  n_sol <- nrow(clust)
-  # get all combination of pairs
-  pairs <- utils::combn(n_sol, 2)
-  
-  # calculate the pairwise ARI for all pairs of solutions
-  pairwise_ari <- future.apply::future_vapply(
-    1:ncol(pairs),
-    function(x) mclust::adjustedRandIndex(clust[pairs[1,x], ], clust[pairs[2,x], ]),
-    numeric(1),
-    future.seed = TRUE
-  )
-  
-  # index the pairs with ari >= ari
-  pairs_dup_idx <- which(pairwise_ari >= ari)
-  # subset the columns of duplicated pairs
-  pairs_dup <- pairs[, pairs_dup_idx, drop = FALSE]
-  
-  # if a ~ b and b ~ c, then not necessarily a ~ c 
-  if (ncol(pairs_dup) > 1) {
-    # dependence boolean
-    pairs_dup_depend_bool <- logical()
-    pairs_dup_tmp <- pairs_dup
-    
-    for (i in 2:ncol(pairs_dup)) {
-      # if the reference is in one of the previous duplicates
-      if(pairs_dup_tmp[1, i] %in% pairs_dup_tmp[2, 1:(i-1)]) {
-        # mark the dependence
-        pairs_dup_depend_bool[i] <- TRUE
-        # break the chain by assigning 0 to the duplicate
-        pairs_dup_tmp[2,i] <- 0
-      } else {
-        pairs_dup_depend_bool[i] <- FALSE
-      }
-    }
-    
-    pairs_dup_depend_idx <- which(pairs_dup_depend_bool == TRUE)
-    
-    # remove the dependent columns 
-    if (length(pairs_dup_depend_idx) > 0) {
-      pairs_dup <- pairs_dup[ , -pairs_dup_depend_idx, drop = FALSE]
-    }
-  }
-  
-  # note it is sensitive to order
-  # second row is considered the duplicate of the first row
-  idx <- unique(pairs_dup[2, ])
-  
-  # frequency of duplicates
-  freq <- as.data.frame(table(pairs_dup[1,]), stringsAsFactors = FALSE)
-  # as.data.frame turn it either character or factor
-  names(freq) <- c("idx", "n")
-  freq$idx <- as.numeric(freq$idx)
-  
-  dup_out <- list(idx = idx,
-                  pairwise_ari = pairwise_ari, # all pairs
-                  freq = freq,
-                  pairs_dup = pairs_dup)
-  return(dup_out)
+## minmax ---------------------------------------------------------------------
+minmax <- function(x, lb = NULL, ub = NULL, max = FALSE, na.rm = TRUE) {
+  # lower bound
+  lb <- min(x, lb, na.rm = na.rm) %||% min(x, na.rm = na.rm)
+  # upper bound
+  ub <- max(x, ub, na.rm = na.rm) %||% max(x, na.rm = na.rm)
+  # normalise
+  x <- if (!max) (x - lb) / (ub - lb) else (x - ub) / (lb - ub)
+  return(x)
 }
 
 # globalVariables -------------------------------------------------------------
-utils::globalVariables(
-  names = c(
-    ".data", "batch", "clust", "geometry", "idx" , "iter", "k",
-    "pareto", "pareto_similar", "r", "run", "stat", "value","obj_value"
-  ), package = "stblob"
-)
+# utils::globalVariables(
+#   names = c(
+#     ".data", "batch", "clust", "geometry", "idx" , "iter", "k",
+#     "pareto", "pareto_similar", "r", "run", "stat", "value","obj_value"
+#   ), package = "stblob"
+# )
