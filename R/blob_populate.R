@@ -5,314 +5,450 @@
 #' algorithm implemented in [blob_search()] for a range of cluster numbers (`k`),
 #' and relative spatial weights (`r`).
 #' 
-#' @inheritParams blob_search
-#' @param k number of clusters. Either an integer or a vector of length 2.
-#' The vector should specify the lower and upper bounds of `k`.
-#' @param r spatial relative weight of range \eqn{[0,1]}. Either a numeric value
-#' or a vector of length 2. The vector should specify the lower and upper bounds
-#' of `r`. Default is `c(0.8,1)`
-#' @param run number of runs per `k`. Default is `10L`.
-#' @param batch number of batches. Default is `5L`.
+#' @inheritParams stblob_lsearch
+#' @param k number of clusters. Either an integer or integer sequence.
+#' @param w_space relative spatial weight of range \eqn{[0,1]}.
+#' Either a numeric value or a vector of length 2.
+#' The vector should specify the lower and upper bounds.
+#' @param optim_type_diversity a logical value to optimise data type diversity.
+#' Default is `FALSE`.
+#' @param w_time relative spatial weight of range \eqn{[0,1]}. Default is `NULL`,
+#' Supply a numeric value when fixed weights across runs are used.
+#' @param w_time relative spatial weight of range \eqn{[0,1]}. Default is `NULL`,
+#' Supply a numeric value when fixed weights across runs are used.
+#' @param run number of runs per \eqn{k}. Default is `10L`.
+#' @param batch number of batches. Default is `NULL`.
 #' @param parallel a logical value to parallelise the search. Default is `TRUE`.
 #' @param workers number of parallel workers passed onto [future::plan()].
-#' Default is `NULL` (`future::availableCores() - 1`).
-#' @param progress a logical value to turn on progress bar in the console.
-#' Default is `TRUE`.
+#' Default is `NULL` with `future::availableCores() - 1`.
+#' @param ... other additional arguments. 
+#' @inheritDotParams stblob_lsearch
 #' 
 #' @details
-#' The function is a wrapper of [blob_search()]. By sampling a range of `r`, it
-#' populates solutions that approximate the optimal trade-offs between spatial
-#' and temporal cost functions (weighted sum scalarisation) for each `k`.
-#' Sampling is done by by Latin hypercube sampling ([lhs::randomLHS()]) to
-#' generate a near-random sample of parameter values for each batch.
-#' Non-dominated solutions are compared across cumulative batches to assess the
-#' advance of the Pareto front in [stblob()].
+#' The function is a wrapper of [stblob_lsearch()].
+#' By sampling a range of parameter combinations of `w_space`, `w_time` and `w_type`,
+#' it populates solutions that locally optimise trade-offs between spatial,
+#' temporal and data type diversity cost functions using augmented weighted
+#' Chebyshev (Tchebycheff) scalarisation (Steuer & Choo, 1983)
+#' across \eqn{k} clusters.
+#' Sampling is done via Latin hypercube sampling ([lhs::randomLHS()]) for a
+#' single free parameter, otherwise via sampling from a Dirichlet distribution
+#' with \eqn{\alpha = \(1,1,1)\)} ([MCMCack::rdirichlet()]).
+#' ###
+#' Non-dominated solutions are then compared across cumulative batches to assess
+#' the advance of the Pareto front in [stblob()].
+#' ###
 #' 
 #' `outlier_removal` is being tested at the moment. The idea is to remove points
-#' whose distance to their medoid is considered an outlier based on the
+#' whose distance to their medoid is an outlier based on the
 #' interquantile range (IQR) of distances to medoid across \eqn{k} clusters.
-#' 
 #' 
 #' @returns
 #' an S3 object of class `pop` with the following components:
 #'  * `clust`: a matrix of cluster assignments; row: solution;
-#'  column: data point (sample).
-#'  * `summary`: a data frame of summary statistics. They include the returning
-#'  number of clusters (`k`), original `k` parameter (`k_o`), three
-#'  objective values (`space_wcd`, `time_wcr` and `time_wce`), number of
-#'  iterations (`iter`), ARI with the previous iteration (`ari`), presence
-#'  of intersecting clusters (`intersects`), number of clusters flagged
-#'  for expected size (`clustsize_f`), number of outliers (`n_outliers`) and
-#'  number of duplicates from other runs (`dup`).
-#'  `idx`, `run` and `batch` refer to the index, run and batch of the solution.
-#'  * `trace`: a data frame of summary statistics per iteration.
-#'  * `filtered_counts`: a data frame of filtered solution counts.
+#'  column: data point.
+#'  * `summary`: a data frame of summary statistics. They include the parameter
+#'  value of (`k`), number of clusters of the output (`k_o`), three
+#'  objective values (`z_space`, `z_time1`, `z_time2` and `z_type`),
+#'  number of iterations (`iter`), ARI with the previous iteration (`ari`),
+#'  state of local search convergence (`ls_convergence`)
+#'  and number of outliers (`n_outliers`).
+#'  * `trace`: a data frame of summary statistics for each iteration.
 #'  * `data`: a data frame of the input data.
+#'  * `filter_summary`: a data frame of filter summary.
 #'  * `params`: a list of parameter values.
 #' 
-#' @seealso [compute_distmat()], [blob_search()],
+#' @seealso [compute_distmat()], [stblob_search()],
 #' [sf::st_as_sf()], [sf::st_concave_hull()],
-#' [sf::sf_use_s2()], [mclust::adjustedRandIndex()], [future::future],
+#' [sf::sf_use_s2()], [aricode::ARI()], [future::future],
 #' [future.apply::future.apply], [progressr::progressr]
 #' 
+#' @references
+#' Steuer, R. E., & Choo, E.-U. (1983). An interactive weighted Tchebycheff
+#' procedure for multiple objective programming. Mathematical Programming,
+#' 26(3), 326–344.
 #' 
 #' @export
 
-blob_populate <- function(data,
-                          k,
-                          r = c(0.8, 1),
-                          iter = 10L,
-                          run = 10L,
-                          batch = 5L,
-                          converge_ari = 1,
-                          coords = c(1L,2L),
-                          age = 3L,
-                          crs = 4326,
-                          space_distmat = NULL,
-                          space_distmethod = NULL,
-                          filter_intersects = TRUE,
-                          hull_convex_ratio = 0.5,
-                          filter_clustsize = TRUE,
-                          outlier_removal = TRUE,
-                          outlier_iqrm = 1.5,
-                          parallel = TRUE,
-                          workers = NULL,
-                          random_init = FALSE,
-                          weights = NULL,
-                          sf_use_s2 = TRUE,
-                          progress = TRUE) {
+stblob_populate <- function(data,
+                            k,
+                            w_space,
+                            optim_type_diversity,
+                            w_time = NULL,
+                            w_type = NULL,
+                            iter = 10L,
+                            run = 10L,
+                            batch = NULL,
+                            coords = NULL,
+                            age = NULL,
+                            space_distmat = NULL,
+                            space_distmethod = c("geodesic", "euclidean"),
+                            type = NULL,
+                            parallel = TRUE,
+                            workers = NULL,
+                            ...
+                            # ls_tol = 0,
+                            # filter_intersects = TRUE,
+                            # hull_convex_ratio = 0.5,
+                            # hull_crs = 4326,
+                            # filter_clustsize = TRUE,
+                            # outlier_removal = FALSE,
+                            # outlier_iqrm = 1.5,
+                            # chebyshev_rho = 1e-4,
+                            # random_init = FALSE,
+                            # sf_use_s2 = TRUE
+                            ) {
   
-  # checks
-  check_input_bp(data = data,
-                 k = k,
-                 r = r,
-                 iter = iter,
-                 run = run,
-                 batch = batch,
-                 converge_ari = converge_ari,
-                 coords = coords,
-                 age = age,
-                 space_distmat = space_distmat,
-                 filter_intersects = filter_intersects,
-                 hull_convex_ratio = hull_convex_ratio,
-                 filter_clustsize = filter_clustsize,
-                 random_init = random_init,
-                 weights = weights,
-                 sf_use_s2 = sf_use_s2,
-                 progress = progress,
-                 parallel = parallel,
-                 workers = workers)
+  params <- c(mget(ls(environment(), sorted = T)),
+              match.call(expand.dots = F)$...)
   
-  params <- mget(c("k", "r", "iter", "run", "batch", "converge_ari",
-                   "filter_intersects", "hull_convex_ratio", "filter_clustsize",
-                   "outlier_removal", "outlier_iqrm", "weights"))
+  # check data
+  stopifnot("data must be a data.frame" = is.data.frame(data))
+  
+  # check columns
+  coords <- if (!is.null(coords)) match(coords, names(data)) else names(data)[c(2,3)]
+  age <- if (!is.null(age)) match(age, names(data)) else names(data)[4]
+  type <- if (!is.null(type)) match(type, names(data)) else names(data)[5]
+  
+  # type may not be a column of optim_type_diversity is turned off
+  if (!optim_type_diversity) type <- NULL
+  
+  stopifnot(
+    "'coords' do not match any column names" = !any(is.na(coords)),
+    "'age' does not match any column names" = !any(is.na(age)),
+    "'type' does not match any column names" = !any(is.na(type)),
+    "'coords' must be numeric" = is.numeric(data[[coords[1]]]) & is.numeric(data[[coords[2]]]),
+    "'age' must be numeric" = is.numeric(data[[age]])
+  )
   
   # check if space_distmat is supplied, compute space_distmat otherwise
   space_distmat <- check_space_distmat(data = data,
+                                       coords = coords,
                                        space_distmat = space_distmat,
                                        space_distmethod = space_distmethod)
   
-  data <- as.data.frame(data)
+  # in case crs is not specified otherwise
+  if (space_distmethod == "euclidean") hull_crs <- NA
   
-  # parameter combinations
-  param_cb <- lapply(1:batch, function(i) {
-    param_cb <- sample_param_cb(k = k, r = r, run = run)
-    param_cb$batch <- i
-    return(param_cb)
-  })
-  param_cb <- do.call(rbind, param_cb)
+  # check_opt_args
+  check_opt_args(...)
   
-  # param vectors
-  param_cb_k <- param_cb$k
-  param_cb_r <- param_cb$r
-  param_cb_run <- param_cb$run
-  param_cb_batch <- param_cb$batch
+  # check populate related args
+  batch <- batch %||% 1L
+  stopifnot(
+    "'run' must be at least 2" = run > 1L,
+    "'batch' must be at least 1" =  batch > 0L,
+    "'parallel' must be logical" = is.logical(parallel)
+  )
   
   # parallel computing via future
-  if (parallel == TRUE) {
+  if (parallel) {
     oplan <- future::plan()                    
     on.exit(future::plan(oplan), add = TRUE)
     workers <- workers %||% (future::availableCores() - 1)
     future::plan(future::multisession, workers = workers)
   }
   
-  progressr::with_progress({
-    # progress bar along the ncol of param_cb 
-    p <- progressr::progressor(along = param_cb_batch) 
-    blob_list <- future.apply::future_Map(function(k, r, run, batch) {
-      p()
-      blob = suppressMessages(
-        blob_search(data,
-                    k,
-                    r,
-                    iter = iter,
-                    converge_ari = converge_ari,
-                    crs = crs,
-                    space_distmat = space_distmat,
-                    filter_intersects = filter_intersects,
-                    hull_convex_ratio = hull_convex_ratio,
-                    filter_clustsize = filter_clustsize,
-                    outlier_removal = outlier_removal,
-                    outlier_iqrm = outlier_iqrm,
-                    random_init = random_init,
-                    weights = weights,
-                    sf_use_s2 = sf_use_s2) 
-      )
-      
-      if (inherits(blob, "blob")) {
-        # data is redundant to process here
-        blob$data <- NULL
-        # label run and batch of the search
-        blob$summary$run <- blob$trace$run <- run
-        blob$summary$batch <- blob$trace$batch <- batch
-        blob <- unclass(blob)
-      }
-      
-      return(blob)
-    }, param_cb_k, param_cb_r, param_cb_run, param_cb_batch, future.seed = TRUE)
-  }, enable = progress)
+  # parameter combinations
+  param_grid_list <- lapply(1:batch, function(i) {
+    param_grid <- sample_param_grid(k = k,
+                                    w_space = w_space,
+                                    run = run,
+                                    optim_type_diversity = optim_type_diversity,
+                                    w_time = w_time,
+                                    w_type = w_type)
+    param_grid$batch <- i
+    return(param_grid)
+  })
   
-  pop <- convert_to_pop(blob_list, data = data, params = params)
+  param_grid <- do.call(rbind, param_grid_list)
+
+  # number of searches to perform
+  NS <- nrow(param_grid)
+  
+  # param vectors
+  grid_k <- param_grid$k
+  grid_w_space <- param_grid$w_space
+  grid_w_time <- param_grid$w_time
+  grid_w_type <- param_grid$w_type
+  grid_run <- param_grid$run
+  grid_batch <- param_grid$batch
+  
+  # progress bar along the ncol of param_grid
+  p <- progressr::progressor(along = 1:NS)
+
+  sol_list <- future.apply::future_Map(function(k, w_space, w_time, w_type, run, batch) {
+    # switch NA back to NULL
+    w_type <- if (is.na(w_type)) NULL
+    
+    sol <- suppressMessages(
+      stblob_lsearch(data = data,
+                     k = k,
+                     w_space = w_space, 
+                     optim_type_diversity = optim_type_diversity,
+                     w_time = w_time,
+                     w_type = w_type,
+                     iter = iter,
+                     coords = coords, 
+                     age = age, 
+                     type = type, 
+                     space_distmat = space_distmat,
+                     space_distmethod = space_distmethod, 
+                     ...)
+    )
+    
+    # data is redundant to process here
+    sol$data <- NULL
+    
+    if (sol$status == 0) {
+      # label run and batch of the search
+      sol$summary$run <- sol$trace$run <- run
+      sol$summary$batch <- sol$trace$batch <- batch
+    }
+    
+    sol <- unclass(sol)
+    
+    # progress
+    p() 
+    
+    return(sol)
+  },
+  grid_k, grid_w_space, grid_w_time, grid_w_type, grid_run, grid_batch,
+  future.seed = TRUE)
+  
+  # return(sol_list)
+  
+  pop <- convert_to_pop(sol_list, data = data, params = params)
+  
   return(pop)
 }
 
 # print.pop ------------------------------------------------------------------
-print.pop <- function(x, ...) {
-  cat(paste0("STblob population of ", nrow(x$clust), " solutions\n"),
-      "# clusters:\n")
-  print(head(x$clust, c(5, 10)))
-  if (ncol(x$clust) > 10) cat(paste0(" <", ncol(x$clust) - 10," more columns (points)>\n"))
-  if (nrow(x$clust) > 5) cat(paste0(" <", nrow(x$clust) - 5," more rows (solutions)>\n"))
-  cat("\n")
-  cat("# summary:\n")
-  print(head(x$summary, 5))
-  if (nrow(x$summary) > 5) cat(paste0(" <", nrow(x$summary) - 5," more rows>\n"))
-  cat("\n")
-  cat("# trace:\n")
-  print(head(x$trace, 5))
-  if (nrow(x$trace) > 5) cat(paste0(" <", nrow(x$trace) - 5," more rows>\n"))
-  cat("\n")
-  cat("# filtered solution counts:\n")
-  print(x$filtered_counts)
+print.stblob_pop <- function(x, ...) {
+  if (!is.null(x$clust)) {
+    cat("STblob population of", nrow(x$clust), "solutions\n")
+
+    cat("$clust\n# cluster assignments:\n")
+    print(head(x$clust, c(5, 10)))
+    if (ncol(x$clust) > 10) cat(paste0(" <", ncol(x$clust) - 10," more columns (points)>\n"))
+    if (nrow(x$clust) > 5) cat(paste0(" <", nrow(x$clust) - 5," more rows (solutions)>\n"))
+    cat("\n")
+    
+    cat("$summary\n# summary:\n")
+    print(head(x$summary, 5))
+    if (nrow(x$summary) > 5) cat(paste0(" <", nrow(x$summary) - 5," more rows>\n"))
+    cat("\n")
+    
+    cat("$filter_summary\n# number of passed and filtered solutions: \n")
+    print(x$filter_summary[c("k",
+                             "pass",
+                             "k1",
+                             "intersects",
+                             "clustsize",
+                             "intersects_clustsize",
+                             "dup")])
+    cat("\n")
+    cat("# upper quartiles of 'w_space' of solutions with intersects: \n")
+    print(x$filter_summary[c("k",
+                             "w_space_q3")])
+    cat("\n")
+    
+    
+  } else {
+    cat("No feasible solution was found.\n")
+    cat("\n")
+    
+    cat("# number of filtered solutions:\n")
+    print(x$status_counts)
+  }
+  
   invisible(x)
 }
 
 # summary.pop ----------------------------------------------------------------
-summary.pop <- function(x, ...) {
+summary.stblob_pop <- function(x, ...) {
   print(x$summary)
   invisible(x)
 }
 
 # helpers ---------------------------------------------------------------------
-## check_input_bp -------------------------------------------------------------
-check_input_bp <- function(data,
-                           k,
-                           r,
-                           iter,
-                           run,
-                           batch,
-                           converge_ari,
-                           coords,
-                           age,
-                           space_distmat,
-                           filter_intersects,
-                           hull_convex_ratio,
-                           filter_clustsize,
-                           random_init,
-                           weights,
-                           sf_use_s2,
-                           progress,
-                           parallel,
-                           workers) {
-  stopifnot(
-    "`data` must be a data frame or matrix" = is.data.frame(data) || is.matrix(data),
-    "`data` must have at least 3 columns" = ncol(data) >= 3L,
-    "`k` must be greater than 1" =
-      all(k > 1L) && (length(r) == 1L || length(r) == 2L),
-    "`r` must be between 0 and 1" =
-      all(r >= 0) && all(r <= 1) && (length(r) == 1L || length(r) == 2L),
-    "`iter` must be at least 3" = iter >= 3L,
-    "`run` must be at least 1" = run >= 1L,
-    "`batch` must be at least 1" = batch >= 1L,
-    "`converge_ari` must be between 0 and 1" = converge_ari >= 0 && converge_ari <= 1,
-    "`filter_intersects` must be logical" = is.logical(filter_intersects),
-    "`hull_convex_ratio` must be between 0 and 1" = hull_convex_ratio >= 0 && hull_convex_ratio <= 1,
-    "`filter_clustsize` must be logical" = is.logical(filter_clustsize),
-    "`random_init` must be logical" = is.logical(random_init),
-    "`sf_use_s2` must be logical" = is.logical(sf_use_s2),
-    "`progress` must be logical" = is.logical(progress),
-    "`parallel` must be logical" = is.logical(parallel)
-  )
-  
-  check_col_ref(coords, data, "coords", expected_length = 2L)
-  check_col_ref(age, data, "age", expected_length = 1L)
-  
-  n <- if (!is.null(space_distmat)) nrow(space_distmat) else nrow(data)
-  
-  if (!is.null(space_distmat)) {
-    stopifnot("`space_distmat` must be a numeric matrix or a `dist` object" =
-                is.numeric(space_distmat),
-              "`space_distmat` must have the same number of rows as `data`" =
-                nrow(data) == nrow(space_distmat))
+## sample_param_grid ----------------------------------------------------------
+sample_param_grid <- function(k,
+                              w_space,
+                              run,
+                              optim_type_diversity,
+                              w_time = NULL,
+                              w_type = NULL) {
+  # checks
+  if (is.list(w_space)) {
+    if (length(w_space) != 1) {
+      stopifnot("'w_space' must be a list length equal to length of 'k'" =
+                  length(w_space) == length(k))
+    }
+  } else {
+    w_space <- list(w_space)
   }
   
-  if (!is.null(weights)) {
-    stopifnot("`weights` must be numeric" =
-                is.numeric(weights),
-              "`weights` must have length equal to number of rows in `data`" =
-                length(weights) == n)
+  if (is.list(w_time)) {
+    if (length(w_time) != 1) {
+      stopifnot("'w_time' must be a list length equal to length of 'k'" =
+                  length(w_time) == length(k))
+    }
+  } else {
+    w_time <- list(w_time)
   }
   
-  if(!is.null(workers)) {
-    stopifnot("`workers` must be at least 2" = workers > 1L)
+  if (is.list(w_type)) {
+    if (length(w_type) != 1) {
+      stopifnot("'w_time' must be a list length equal to length of 'k'" =
+                  length(w_type) == length(k))
+    }
+  } else {
+    w_type <- list(w_type)
   }
   
-  invisible(NULL)
+  # Map() cannot deal with NULL, NULL -> NA
+  w_time <- lapply(w_time, function(x) x <- x %||% NA)
+  w_type <- lapply(w_type, function(x) x <- x %||% NA)
+  
+  w_grid <- Map(function(x, y, z) {
+    # switch NA back to NULL for sample_w()
+    y <- if (is.na(y)) NULL
+    z <- if (is.na(z)) NULL
+    sample_w(w_space = x,
+             run = run,
+             optim_type_diversity = optim_type_diversity,
+             w_time = y,
+             w_type = z)},
+    w_space, w_time, w_type)
+  
+  if (length(w_grid) != length(k)) w_grid <- rep(w_grid, length(k))
+  
+  param_grid <- Map(function(x, y) cbind(k = x, y), k, w_grid)
+  param_grid <- do.call(rbind, param_grid)
+  
+  return(param_grid)
 }
 
-## sample_r -------------------------------------------------------------------
-sample_r <- function(r, run) {
-  if (length(r) == 2) {
-    # LHS sampling for more evenly distributed parameters
-    lhs_samples <- lhs::randomLHS(run,1)
-    # scale to the range
-    r_samples <- sort(as.vector(min(r) + lhs_samples * (max(r) - min(r))))
+## sample_w -------------------------------------------------------------------
+sample_w <- function(w_space,
+                     run,
+                     optim_type_diversity,
+                     w_time = NULL,
+                     w_type = NULL) {
+  
+  w <- NULL
+  w_lens <- vapply(list(w_space, w_time, w_type), length, numeric(1L))
+  
+  stopifnot("'w_space', 'w_time' and 'w_type' must be between 0 and 1" =
+            all(unlist(c(w_space, w_time, w_type)) >= 0) & all(unlist(c(w_space, w_time, w_type)) <= 1))
+  
+  if (!optim_type_diversity) {
+    
+    if (w_lens[1] == 2) {
+      # Latin hypercube sampling
+      lhs_samps <- lhs::randomLHS(run, 1)
+      w1 <- sort(as.vector(min(w_space) + lhs_samps * (max(w_space) - min(w_space))))
+      w2 <- 1 - w1
+    } else {
+      w1 <- rep(w_space, run)
+      w2 <- 1 - w1
+    }
+    
+    w <- data.frame(w_space = w1, w_time = w2, w_type = NA)
+    
   } else {
-    r_samples <- rep(r,run)
+    
+    if (w_lens[1] == 1) {
+      
+      w1 <- rep(w_space, run)
+      
+      if (all(w_lens == 1)) {
+        
+        stopifnot("'w_space', 'w_time' and 'w_type' must sum up to 1" =
+                    all.equal(sum(w_space, w_time, w_type), 1))
+        
+        w2 <- rep(w_time, run)
+        w3 <- rep(w_type, run)
+        
+      } 
+      
+      if (sum(w_lens == 1) == 2) {
+        
+        stopifnot("'w_space', 'w_time' and 'w_type' must sum up to 1" =
+                    sum(w_space, w_time, w_type) <= 1)
+        
+        if (w_lens[2] == 1) {
+          w2 <- rep(w_time, run)
+          w3 <- 1 - w1 - w2
+        }
+        
+        if (w_lens[3] == 1) {
+          w3 <- rep(w_type, run)
+          w2 <- 1 - w1 - w3
+        }
+        
+      }
+      
+      if (sum(w_lens == 1) == 1) {
+        
+        if (w_space == 1) {
+          w2 <- 1 - w1
+          w3 <- 1 - w1
+        }
+        
+        if (w_space < 1) {
+          w_time <- c(1 - w_space, 0)
+          # Latin hypercube sampling
+          lhs_samps <- lhs::randomLHS(run, 1)
+          w2 <- sort(as.vector(min(w_time) + lhs_samps * (max(w_time) - min(w_time))))
+          w3 <- 1 - w1 - w2
+        }
+        
+      }
+      
+      w <- data.frame(w_space = w1, w_time = w2, w_type = w3)
+      if (any(abs(w) < .Machine$double.eps ^ 0.5)) w[abs(w) < .Machine$double.eps ^ 0.5] <- 0
+    }
+    
+    if (w_lens[1] == 2) {
+      w <- data.frame()
+      while (nrow(w) < run) {
+        dirchlet_samp <- MCMCpack::rdirichlet(1, c(1,1,1))
+        # reject sample if w_space is outside the constraint
+        if (dirchlet_samp[1] >= min(w_space) &
+            dirchlet_samp[1] <= max(w_space)) {
+          w <- rbind(w, dirchlet_samp)}
+      }
+      names(w) <- c("w_space", "w_time", "w_type")
+    }
   }
-  return(r_samples)
-}
-## sample_param_cb ------------------------------------------------------------
-sample_param_cb <- function(k, r, run) {
-  K <- if (length(k) == 2L) k[1]:k[2] else k
-  R <- sample_r(r, run)
-  RUN <- 1:run
-  # parameter combination
-  param_cb <- expand.grid(k = K, r = R)
+  
   # index the run
-  R_run_cb <- data.frame(r = R, run = RUN)
-  param_cb <- merge(param_cb, R_run_cb, all.x = TRUE)
-  return(param_cb)
+  w$run <- 1:nrow(w)
+  return(w)
 }
 
 ## convert_to_pop -------------------------------------------------------------
-convert_to_pop <- function(blob_list, data, params = NULL) {
+convert_to_pop <- function(sol_list, data, params) {
   # summarise invalid runs
-  invalid_runs <- which(sapply(blob_list, function(x) is.numeric(x)))
-  invalid_counts <- summarise_invalid(blob_list, invalid_runs)
+  invalid_idx <- which(vapply(sol_list, function(x) x$status > 0, logical(1L)))
+  filter_summary <- summarise_filter(sol_list = sol_list, invalid_idx = invalid_idx)
+
   
   # combine output from valid runs
-  total_runs <- 1:length(blob_list)
-  valid_runs <- total_runs[-invalid_runs]
-  valid_len <- length(valid_runs)
+  runs <- 1:length(sol_list)
+  runs_pass <- runs[!runs %in% invalid_idx]
+  # runs_valid <- if (length(invalid_idx) > 0) runs[-invalid_idx] else runs
+  len_pass <- length(runs_pass)
   
   # rbind the list of output from different runs 
-  if (valid_len > 0) {
-    blob_list <- blob_list[valid_runs]
+  if (len_pass > 0) {
+    s <- sol_list[runs_pass]
     pop <- list()
     for (l in c("clust", "summary", "trace")) {
       # extract the df
-      e <- lapply(blob_list, function(x) x[[l]])
+      e <- lapply(s, function(x) x[[l]])
       if (l %in% c("summary", "trace")) {
         e <- Map(function(x,y) {
           x$idx <- y
@@ -329,18 +465,37 @@ convert_to_pop <- function(blob_list, data, params = NULL) {
     trace <- pop$trace
     
     # find, label and remove the duplicates
-    if (valid_len > 1) {
-      dup <- find_dup(clust)
+    if (len_pass > 1) {
+      dup <- duplicated(clust)
       # duplicated indices
-      dup_idx <- dup$idx
+      dup_idx <- which(dup)
       
       if (length(dup_idx) > 0) {
+        # parameter k to split dup count
+        dup_idx_k <- split(dup_idx, summary$k[dup_idx])
+        
         # record the freq
-        summary$dup <- 0
-        summary$dup[dup$freq$idx] <- dup$freq$n
-        invalid_counts$n[5] <- sum(dup$freq$n)
+        dup_counts <- vapply(dup_idx_k, function(x) length(x), numeric(1L))
+        dup_counts <- as.data.frame(dup_counts)
+        dup_counts <- cbind(as.numeric(rownames(dup_counts)), dup_counts)
+        names(dup_counts) <- c("k", "dup")
+        
+        # update status_counts
+        filter_summary <- merge(filter_summary, dup_counts, all.x = TRUE)
+        filter_summary$dup[is.na(filter_summary$dup)] <- 0
+        
+        # reorder columns
+        filter_summary <- filter_summary[c("k",
+                                           "pass",
+                                           "k1",
+                                           "intersects",
+                                           "clustsize",
+                                           "intersects_clustsize",
+                                           "dup",
+                                           "w_space_q3")]
+        
         # remove the runs from the output
-        clust <- clust[-dup_idx, ]
+        clust <- unique(clust)
         summary <- subset(summary, !idx %in% dup_idx)
         trace <- subset(trace, !idx %in% dup_idx)
         # reindex the output
@@ -351,60 +506,107 @@ convert_to_pop <- function(blob_list, data, params = NULL) {
       }
     }
   } else {
-    clust <- summary <- trace <- NULL
+    clust <- summary <- trace <- NA
+    filter_summary$dup <- 0
+    # reorder columns
+    filter_summary <- filter_summary[c("k",
+                                       "pass",
+                                       "k1",
+                                       "intersects",
+                                       "clustsize",
+                                       "intersects_clustsize",
+                                       "dup",
+                                       "w_space_q3")]
   }
   
-  # more understandable
-  filtered_counts <- invalid_counts
-  
-  if (is.null(clust)) message("No feasible solution is found.")
+  if (all(is.na(clust))) message("No feasible solution was found.")
   
   return(new_pop(clust = clust,
                  summary = summary,
                  trace = trace,
-                 filtered_counts = filtered_counts,
                  data = data,
+                 filter_summary = filter_summary,
                  params = params))
 }
 
-## summarise_invalid ----------------------------------------------------------
-summarise_invalid <- function(blob_list, invalid_run = NULL) {
-  # blob_list: a list of blob objects or alike
-  # invalid_run: skip looking for status output from the list if supplied
-  # dup is not really invalid but included here to make the code cleaner
-  invalid_run <- invalid_run %||% which(sapply(blob_list, function(x) is.numeric(x)))
-  status <- unlist(blob_list[invalid_run])
-  status_counts <- as.data.frame(table(status), responseName = "n")
-  status_counts <- merge(data.frame(status = c(1,2,3,4,5)), status_counts,
-                         all.x = TRUE)
-  status_counts[is.na(status_counts)] <- 0
+## summarise_filter -----------------------------------------------------------
+summarise_filter <- function(sol_list, invalid_idx = NULL) {
+  # sol_list: a list of sol objects or alike
+  # invalid_idx: skip looking for status output from the list if supplied
+  invalid_idx <- invalid_idx %||% which(vapply(sol_list, function(x) x$status > 0, logical(1L)))
   
-  status_counts$status <- sapply(status_counts$status,
-                                 function(x) switch(x,
-                                                    "1" = "k1",
-                                                    "2" = "intersects",
-                                                    "3" = "clustsize",
-                                                    "4" = "intersects_clustsize",
-                                                    "5" = "dup"))
-  return(status_counts)
+  # k params for each sol
+  k <- vapply(sol_list, function(x) x$params$k, numeric(1L))
+  K <- sort(unique(k))
+  
+  status <- vapply(sol_list, function(x) x$status, numeric(1L))
+  w_space <- vapply(sol_list, function(x) x$params$w_space, numeric(1L))
+  # subset status intersect
+  w_space[!(status == 2 | status == 4)] <- NA
+    
+  if (length(status) > 0) {
+    # status
+    status_counts <- lapply(split(status, k), function(x) {
+      s <- numeric(5L)
+      x <- table(x)
+      s[(as.numeric(names(x))+1)] <- x
+      return(s)
+      })
+    
+    status_counts <- as.data.frame(do.call(rbind, status_counts))
+    # get column from rownames
+    status_counts <- cbind(as.numeric(rownames(status_counts)), status_counts)
+    # name the columns
+    colnames(status_counts) <- c("k", "pass", "k1", "intersects",
+                                 "clustsize", "intersects_clustsize")
+    # obtain all k for the df
+    status_counts <- merge(data.frame(k = K), status_counts, all.x = TRUE)
+    status_counts[is.na(status_counts)] <- 0
+    
+    # Q3 of w_space parameter values of solutions with intersects
+    ws_q3 <- lapply(
+      split(w_space, k),
+      function(x) as.numeric(stats::quantile(x, probs = 0.75, na.rm = TRUE))
+    )
+    ws_q3 <- as.data.frame(do.call(rbind, ws_q3))
+    # get column from rownames
+    ws_q3 <- cbind(as.numeric(rownames(ws_q3)), ws_q3)
+    # name the columns
+    colnames(ws_q3) <- c("k", "w_space_q3")
+    # obtain all k for the df
+    ws_q3 <- merge(data.frame(k = K), ws_q3, all.x = TRUE)
+    
+    # combine into filter_summary
+    filter_summary <- merge(status_counts, ws_q3)
+    
+  } else {
+    filter_summary <- data.frame(k = K,
+                                 k1 = 0,
+                                 intersects = 0,
+                                 clustsize = 0,
+                                 intersects_clustsize = 0,
+                                 w_space_q3 = NA)
+  }
+  
+  return(filter_summary)
 }
 
 ## new_pop --------------------------------------------------------------------
-new_pop <- function(clust, summary, trace, filtered_counts, data, params) {
-  stopifnot(is.null(clust) || is.matrix(clust),
-            is.null(summary) || is.data.frame(summary),
-            is.null(trace) || is.data.frame(trace),
-            is.data.frame(filtered_counts),
+new_pop <- function(clust, summary, trace, data, filter_summary, params) {
+  stopifnot(is.matrix(clust) || (length(clust) == 1 && is.na(clust)) ,
+            is.data.frame(summary) || (length(summary) == 1 && is.na(summary)),
+            is.data.frame(trace) || (length(trace) == 1 && is.na(trace)),
             is.data.frame(data),
+            is.data.frame(filter_summary),
             is.null(params) || is.list(params))
   
   structure(
     list(clust = clust,
          summary = summary,
          trace = trace,
-         filtered_counts = filtered_counts,
          data = data,
+         filter_summary = filter_summary,
          params = params),
-    class = "pop"
+    class = "stblob_pop"
   )
 }
