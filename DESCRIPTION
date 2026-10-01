@@ -1,5 +1,5 @@
 Package: stblob
-Title: What the Package Does (One Line, Title Case)
+Title: SpatioTemporal Blob Partitioning Algorithm for Regional Time Series
 Version: 0.0.0.9000
 Authors@R: 
     person("Victor Yan Kin", "Lee", , "yan.kin.lee@sund.ku.dk", role = c("aut", "cre"),
