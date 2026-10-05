@@ -73,19 +73,25 @@
 stblob_populate <- function(data,
                             k,
                             w_space,
-                            optim_type_diversity,
-                            w_time = NULL,
-                            w_type = NULL,
+                            optim_type_diversity = FALSE,
                             iter = 10L,
                             run = 10L,
-                            batch = NULL,
+                            batch = 10L,
+                            w_time = NULL,
+                            w_type = NULL,
+                            
+                            # additional input arguments like column names
                             coords = NULL,
                             age = NULL,
+                            type = NULL,
                             space_distmat = NULL,
                             space_distmethod = c("geodesic", "euclidean"),
-                            type = NULL,
+                            
+                            # future.apply
                             parallel = TRUE,
                             workers = NULL,
+                            
+                            # constraints and additional local-search arguments
                             ...
                             # ls_tol = 0,
                             # filter_intersects = TRUE,
@@ -99,11 +105,12 @@ stblob_populate <- function(data,
                             # sf_use_s2 = TRUE
                             ) {
   
-  params <- c(mget(ls(environment(), sorted = T)),
-              match.call(expand.dots = F)$...)
+  params <- c(mget(ls(environment(), sorted = FALSE)),
+              match.call(expand.dots = FALSE)$...)
+  params$data <- params$space_distmat <- NULL
   
   # check data
-  stopifnot("data must be a data.frame" = is.data.frame(data))
+  stopifnot("'data' must be a data.frame" = is.data.frame(data))
   
   # check columns
   coords <- if (!is.null(coords)) match(coords, names(data)) else names(data)[c(2,3)]
@@ -134,7 +141,6 @@ stblob_populate <- function(data,
   check_opt_args(...)
   
   # check populate related args
-  batch <- batch %||% 1L
   stopifnot(
     "'run' must be at least 2" = run > 1L,
     "'batch' must be at least 1" =  batch > 0L,
@@ -197,8 +203,9 @@ stblob_populate <- function(data,
                      ...)
     )
     
-    # data is redundant to process here
+    # data and space_distmat are redundant to process here
     sol$data <- NULL
+    sol$space_distmat <- NULL
     
     if (sol$status == 0) {
       # label run and batch of the search
@@ -216,9 +223,7 @@ stblob_populate <- function(data,
   grid_k, grid_w_space, grid_w_time, grid_w_type, grid_run, grid_batch,
   future.seed = TRUE)
   
-  # return(sol_list)
-  
-  pop <- convert_to_pop(sol_list, data = data, params = params)
+  pop <- convert_to_pop(sol_list, data = data, space_distmat, params = params)
   
   return(pop)
 }
@@ -430,7 +435,7 @@ sample_w <- function(w_space,
 }
 
 ## convert_to_pop -------------------------------------------------------------
-convert_to_pop <- function(sol_list, data, params) {
+convert_to_pop <- function(sol_list, data, space_distmat, params) {
   # summarise invalid runs
   invalid_idx <- which(vapply(sol_list, function(x) x$status > 0, logical(1L)))
   filter_summary <- summarise_filter(sol_list = sol_list, invalid_idx = invalid_idx)
@@ -525,6 +530,7 @@ convert_to_pop <- function(sol_list, data, params) {
                  summary = summary,
                  trace = trace,
                  data = data,
+                 space_distmat = space_distmat,
                  filter_summary = filter_summary,
                  params = params))
 }
@@ -592,11 +598,12 @@ summarise_filter <- function(sol_list, invalid_idx = NULL) {
 }
 
 ## new_pop --------------------------------------------------------------------
-new_pop <- function(clust, summary, trace, data, filter_summary, params) {
-  stopifnot(is.matrix(clust) || (length(clust) == 1 && is.na(clust)) ,
-            is.data.frame(summary) || (length(summary) == 1 && is.na(summary)),
-            is.data.frame(trace) || (length(trace) == 1 && is.na(trace)),
+new_pop <- function(clust, summary, trace, data, space_distmat, filter_summary, params) {
+  stopifnot(is.matrix(clust) || (length(clust) == 1 && all(is.na(clust))) ,
+            is.data.frame(summary) || (length(summary) == 1 && all(is.na(summary))),
+            is.data.frame(trace) || (length(trace) == 1 && all(is.na(trace))),
             is.data.frame(data),
+            is.matrix(space_distmat),
             is.data.frame(filter_summary),
             is.null(params) || is.list(params))
   
@@ -605,6 +612,7 @@ new_pop <- function(clust, summary, trace, data, filter_summary, params) {
          summary = summary,
          trace = trace,
          data = data,
+         space_distmat = space_distmat,
          filter_summary = filter_summary,
          params = params),
     class = "stblob_pop"
