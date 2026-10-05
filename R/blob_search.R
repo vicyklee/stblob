@@ -129,15 +129,19 @@
 stblob_lsearch <- function(data,
                            k,
                            w_space, 
-                           optim_type_diversity,
+                           optim_type_diversity = FALSE,
+                           iter = 10L,
                            w_time = NULL,
                            w_type = NULL,
-                           iter = 10L,
+                           
+                           # additional input arguments like column names
                            coords = NULL, 
                            age = NULL, 
                            type = NULL, 
                            space_distmat = NULL,
                            space_distmethod = c("geodesic", "euclidean"),
+                           
+                           # constraints and additional local-search arguments
                            ls_tol = 0,
                            chebyshev_rho = 1e-4, 
                            filter_intersects = TRUE,
@@ -151,6 +155,7 @@ stblob_lsearch <- function(data,
   
   # return params as a list element
   params <- mget(ls(environment(), sorted = FALSE))
+  params$data <- params$space_distmat <- NULL
   
   # check data
   stopifnot("data must be a data.frame" = is.data.frame(data))
@@ -334,8 +339,13 @@ stblob_lsearch <- function(data,
   }
 
   
-  return(new_sol(clust = clust, summary = summary, trace = trace,
-                 data = data, status = status, params = params))
+  return(new_sol(clust = clust,
+                 summary = summary,
+                 trace = trace,
+                 data = data,
+                 space_distmat = space_distmat,
+                 status = status,
+                 params = params))
 }
 
 # lsearch_init ----------------------------------------------------------------
@@ -762,17 +772,23 @@ select_trace <- function(x) {
 }
 
 ## new_blobs ------------------------------------------------------------------
-new_sol <- function(clust, summary, trace, data, status, params) {
-  stopifnot(is.numeric(clust) || (length(clust) == 1 && is.na(clust)),
-            is.data.frame(summary) || (length(summary) == 1 && is.na(summary)),
-            is.data.frame(trace) || (length(trace) == 1 && is.na(trace)),
+new_sol <- function(clust, summary, trace, data, space_distmat, status, params) {
+  stopifnot(is.numeric(clust) || (length(clust) == 1 && all(is.na(clust))),
+            is.data.frame(summary) || (length(summary) == 1 && all(is.na(summary))),
+            is.data.frame(trace) || (length(trace) == 1 && all(is.na(trace))),
             is.data.frame(data),
+            is.matrix(space_distmat),
             is.numeric(status),
             is.list(params))
   
   structure(
-    list(clust = clust, summary = summary, trace = trace, data = data,
-         status = status, params = params),
+    list(clust = clust,
+         summary = summary,
+         trace = trace,
+         data = data,
+         space_distmat = space_distmat,
+         status = status,
+         params = params),
     class = "stblob_sol"
   )
 }
