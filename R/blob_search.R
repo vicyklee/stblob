@@ -1,8 +1,8 @@
 #' Core local-search algorithm
 #' 
 #' @description
-#' `stblob_lsearch()` performs a bi-objective local-search algorithm to
-#' assign clusters for a given number of clusters (`k`).
+#' `stblob_lsearch()` performs a local-search algorithm to assign clusters
+#' for a given number of clusters (`k`).
 #' 
 #' @param data a data frame or matrix with spatial coordinates, age and optionally
 #' type of the data.
