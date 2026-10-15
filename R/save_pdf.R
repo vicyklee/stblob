@@ -1,8 +1,7 @@
 #' Save plot as PDF
 #' 
 #' @description
-#' `save_pdf()` function saves a plot as PDF. As [ggplot2::ggsave()] can be
-#' buggy with text spacing.
+#' `save_pdf()` function saves a plot as PDF.
 #' 
 #' @param p plot.
 #' @inheritParams grDevices::pdf
