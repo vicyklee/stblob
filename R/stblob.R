@@ -61,10 +61,10 @@
 #' 
 #' `adapt_search = TRUE` does two things to reduce duplicated or infeasible
 #' searches.
-#' First, it stops searching for \eqn{k}
-#' which exceeds the proportion of duplicates as specified by `dup_tol`. Second,
-#' it updates the lower bound of `w_space` with the upper quartile (Q3) of
-#' `w_space` across solutions with intersecting boundaries for each \eqn{k}.
+#' First, it stops searching for \eqn{k_i}
+#' that exceeds the proportion of duplicates as specified by `dup_tol`.
+#' Second, it updates the lower bound of `w_space` with the upper quartile (Q3)
+#' of `w_space` across solutions with intersecting boundaries for each \eqn{k}.
 #' 
 #' `outlier_removal` is being tested at the moment. The idea is to remove points
 #' whose distance to their medoid is considered an outlier based on the
@@ -89,7 +89,7 @@
 #'  * `trace`: a data frame of summary statistics for each iteration.
 #'  * `moo_convergence`: a logical value to indicate MOO convergence.
 #'  * `moo_diagnostics`: a data frame of MOO quality
-#'  indicators measuring the advance of the empirical Pareto front.
+#'  indicators for every cumulative batch.
 #'  * `data`: a data frame of the input data.
 #'  * `filter_summary`: a data frame of filter summary.
 #'  * `params`: a list of parameter values.
