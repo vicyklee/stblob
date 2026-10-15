@@ -16,7 +16,7 @@
 #' Supply a numeric value when fixed weights across runs are used.
 #' @param w_time relative spatial weight of range \eqn{[0,1]}. Default is `NULL`,
 #' Supply a numeric value when fixed weights across runs are used.
-#' @param run number of runs per \eqn{k}. Default is `10L`.
+#' @param run number of runs per \eqn{k_i}. Default is `10L`.
 #' @param batch number of batches. Default is `NULL`.
 #' @param parallel a logical value to parallelise the search. Default is `TRUE`.
 #' @param workers number of parallel workers passed onto [future::plan()].
@@ -36,7 +36,7 @@
 #' with \eqn{\alpha = (1,1,1)} ([MCMCack::rdirichlet()]).
 #' 
 #' `outlier_removal` is being tested at the moment. The idea is to remove points
-#' whose distance to their medoid is an outlier based on the
+#' of which the distance to their medoid is an outlier based on the
 #' interquantile range (IQR) of distances to medoid across \eqn{k} clusters.
 #' 
 #' @returns
