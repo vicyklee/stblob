@@ -4,3 +4,4 @@
 ^paper$
 ^\.positai$
 ^\.claude$
+^data-raw$
