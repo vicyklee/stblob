@@ -37,7 +37,13 @@ combine_pop <- function(pop1, pop2, ...) {
     pop_list[[which.max(vapply(pop_list, function(x) length(x$params), numeric(1L)))]]$params
   )
   # each pop corresponds to an element of the list for each param
-  params <- lapply(params_names, function(x) lapply(pop_list, function(y) y$params[[x]]))
+  params <- lapply(params_names, function(x) {
+    z <- lapply(pop_list, function(y) y$params[[x]])
+    if (is.list(unlist(z, recursive = FALSE))) {
+      z <- unlist(z, recursive = FALSE)
+    }
+    z
+  })
   names(params) <- params_names
   # check for optim_type_diversity
   stopifnot("All pops must be generated with the same 'optim_type_diversity' argument" = all(unlist(params$optim_type_diversity)) || all(!unlist(params$optim_type_diversity)))
@@ -129,7 +135,7 @@ combine_pop <- function(pop1, pop2, ...) {
       filter_summary$pass <- filter_summary$pass - dup_counts$dup
 
       # remove the runs from the output
-      clust <- clust[-dup_idx, ]
+      clust <- clust[-dup_idx, , drop = FALSE]
       summary <- subset(summary, !idx %in% dup_idx)
       trace <- subset(trace, !idx %in% dup_idx)
       # reindex the output
