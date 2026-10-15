@@ -191,10 +191,10 @@ minmax <- function(x, lb = NULL, ub = NULL, max = FALSE, na.rm = TRUE) {
   # normalise
   if (!max) {
     x <- (x - lb) / (ub - lb)
-    x <- if (!is.na(x)) x else 0
+    x <- if (!all(is.na(x))) x else 0
   } else {
     x <- (x - ub) / (lb - ub)
-    x <- if (!is.na(x)) x else 1
+    x <- if (!all(is.na(x))) x else 1
   } 
   return(x)
 }
