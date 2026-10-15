@@ -1,7 +1,7 @@
-#' Core local-search algorithm
+#' Core local search algorithm
 #' 
 #' @description
-#' `stblob_lsearch()` performs a local-search algorithm to assign clusters
+#' `stblob_lsearch()` performs a local search algorithm to assign clusters
 #' for a given number of clusters (`k`).
 #' 
 #' @param data a data frame or matrix with spatial coordinates, age and optionally
@@ -13,7 +13,7 @@
 #' @param w_time relative temporal weight of range \eqn{\[0,1\]}. Default is `NULL`.
 #' @param w_type relative data type diversity weight of range \eqn{\[0,1\]}. Default is `NULL`.
 #' @param iter number of iterations. Default is `10L`.
-#' @param ls_tol tolerance for local-search optimisation. The difference to the
+#' @param ls_tol tolerance for local search optimisation. The difference to the
 #' highest Adjusted Rand Index (ARI) (i.e. `1` -- identitical) for three
 #' consecutive iterations to be considered reaching convergence. Default is `0`.
 #' @param coords a vector of character strings of length `2L`.
@@ -46,13 +46,13 @@
 #' See [sf::sf_use_s2()]. Default is `TRUE`.
 #' 
 #' @details
-#' The core local-search algorithm searches for clusters that optimise
+#' The core local search algorithm searches for clusters that optimise
 #' within-cluster spatial proximity, temporal coverage, and data type
 #' information simultaneously.
 #' Spatially, it uses k-medoid clustering approach (Kaufman & Rousseeuw, 1987),
 #' implemented similarly to the standard k-means clustering algorithm 
 #' (Lloyd, 1982). For time and data type diversity, greedy algorithms are
-#' used to optimise within-cluster temporal range and evenness, as well as data
+#' used to optimise within-cluster temporal variance and evenness, as well as data
 #' types contained in each cluster.
 #' 
 #' The cost functions are combined into a single function using augmented
@@ -62,17 +62,17 @@
 #' they are normalised with respect to the costs across \eqn{k} clusters at each 
 #' step by min-max normalisation.
 #' 
-#' A partition is evaluated based on three objectives:
+#' A solution is evaluated based on the following objectives:
 #'
 #' * `space_distance`: average within-cluster spatial distances to the medoid
 #' * `time_variance`:  average within-cluster temporal variance
 #' * `time_evenness`: average within-cluster temporal variance of first differences
-#' * `type_diversity`: average within-cluster Shannon entropy of data types
+#' * `type_diversity` (`optim_type_diversity = TRUE`): average within-cluster Shannon entropy of data types
 #' 
-#' The objective values are returned in the `summary` by the terms `z_space`,
-#' `z_time1`, `z_time2` and `z_type` respectively.
-#' The maximisation objectives are multiplied by -1 as a minimisation problem
-#' in multi-objective optimisation.
+#' Objective values (\eqn{z}) are returned in the `summary`
+#' by the terms `z_space`, `z_time1`, `z_time2` and `z_type` respectively.
+#' The maximisation objectives are multiplied by -1
+#' as a minimisation problem in multi-objective optimisation (MOOO).
 #' 
 #' The search will terminate until either the ARI tolerance to the previous
 #' iteration are at most as specified by `ls_tol` for three consecutive
@@ -81,11 +81,13 @@
 #' An ideal partition should return clusters of roughly equal sizes. The
 #' size threshold of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is
 #' the number of data points and \eqn{k} the number of clusters.
-#' `filter_clustsize = T` will remove the solution with any flagged clusters.
-#' `filter_intersects = T` constrains feasible solutions to
+#' `filter_clustsize = TRUE` will remove the solution with any clusters
+#' below the expected size
+#' `filter_intersects = TRUE` constrains feasible solutions to
 #' partitions with non-overlapping boundaries. The boundaries are constructed by
 #' concave/convex hulls, of which the convexity is controlled by
 #' `hull_convex_ratio` passed onto the `ratio` of [sf::st_concave_hull()].
+#' The default value of `0.5` is arbitrary. 
 #'
 #' `outlier_removal` is being tested at the moment. The idea is to remove points
 #' whose distance to their medoid is an outlier based on the
@@ -95,7 +97,7 @@
 #' an S3 object of class `stblob_sol` with the following components:
 #'  * `clust`: a vector of cluster assignments.
 #'  * `summary`: a data frame of summary statistics. They include the parameter
-#'  value of (`k`), number of clusters of the output (`k_o`), three
+#'  value of (`k`), number of clusters of the output (`k_o`), four
 #'  objective values (`z_space`, `z_time1`, `z_time2` and `z_type`),
 #'  number of iterations (`iter`), ARI with the previous iteration (`ari`),
 #'  state of local search convergence (`ls_convergence`)
@@ -141,7 +143,7 @@ stblob_lsearch <- function(data,
                            space_distmat = NULL,
                            space_distmethod = c("geodesic", "euclidean"),
                            
-                           # constraints and additional local-search arguments
+                           # constraints and additional local search arguments
                            ls_tol = 0,
                            chebyshev_rho = 1e-4, 
                            filter_intersects = TRUE,
@@ -157,39 +159,43 @@ stblob_lsearch <- function(data,
   params <- mget(ls(environment(), sorted = FALSE))
   params$data <- params$space_distmat <- NULL
   
-  # check data
-  stopifnot("data must be a data.frame" = is.data.frame(data))
-  data_input <- data
+  # check args
+  check_args(data = data,
+             optim_type_diversity = optim_type_diversity,
+             iter = iter,
+             coords = coords,
+             age = age,
+             type = type)
   
-  # check columns
-  coords <- if (!is.null(coords)) match(coords, names(data)) else names(data)[c(2,3)]
-  age <- if (!is.null(age)) match(age, names(data)) else names(data)[4]
-  type <- if (!is.null(type)) match(type, names(data)) else names(data)[5]
+  check_ls_args(k = k, w_space = w_space, w_time = w_time, w_type = w_type)
   
-  # type may not be a column of optim_type_diversity is turned off
-  if (!optim_type_diversity) type <- NULL
-  
-  stopifnot(
-    "'coords' do not match any column names." = !any(is.na(coords)),
-    "'age' does not match any column names." = !any(is.na(age)),
-    "'type' does not match any column names." = !any(is.na(type)),
-    "'coords' must be numeric." = is.numeric(data[[coords[1]]]) & is.numeric(data[[coords[2]]]),
-    "'age' must be numeric." = is.numeric(data[[age]])
-  )
+    
+  # assign column names to NULL
+  coords <- coords %||% names(data)[c(2,3)]
+  age <- age %||% names(data)[4]
+  type <- if (optim_type_diversity) type %||% names(data)[5] else NULL
+  w_type <- if (optim_type_diversity) w_type else 0
   
   # calculate relative weights for NULL weights
-  w_type <- w_type %||% 0
-  w_time <- w_time %||% (1 - w_space - w_type)
+  # w_type <- w_type %||% 0
+  # w_time <- w_time %||% (1 - w_space - w_type)
+  
+  # calculate relative weights for NULL weights
+  if (is.null(w_time) && is.null(w_type)) {
+    w_time <- w_type <- (1 - w_space) / 2
+  }
+  
+  if (is.null(w_time) && !is.null(w_type)) {
+    w_time <- 1 - w_space - w_type
+  }
+  
+  if (is.null(w_type) && !is.null(w_time)) {
+    w_type <- 1 - w_space - w_time
+  }
+  
   # floating point imprecision for 0
   if (abs(w_time) < .Machine$double.eps ^ 0.5) w_time <- 0
-  
-  # check w_space, w_time and w_type
-  stopifnot(
-    "'w_space', 'w_time' and 'w_type' must be between 0 and 1" =
-      (w_space >= 0 && w_space <= 1) && (w_time >= 0 && w_time <= 1) && (w_type >= 0 && w_type <= 1),
-    "'w_space', 'w_time' and 'w_type' must sum up to 1" =
-      all.equal(sum(w_space, w_time, w_type), 1)
-  )
+  if (abs(w_type) < .Machine$double.eps ^ 0.5) w_type <- 0
   
   # check if space_distmat is supplied
   space_distmat <- check_space_distmat(data = data,
@@ -200,6 +206,7 @@ stblob_lsearch <- function(data,
   # in case crs is not specified otherwise
   if (space_distmethod == "euclidean") hull_crs <- NA
   
+  # check other args
   check_opt_args(ls_tol = ls_tol,
                  chebyshev_rho = chebyshev_rho, 
                  filter_intersects = filter_intersects,
@@ -305,7 +312,7 @@ stblob_lsearch <- function(data,
   # filter solution with intersects and clustsize_f
   status <- status_intersects <- status_clustsizef <- 0
   
-  if (length(unique(stats::na.omit(clust))) < 2) {
+  if (summary$k_o < 2) {
     message("Status code 1: Only 1 returning cluster.")
     status <- 1
   }
@@ -332,8 +339,7 @@ stblob_lsearch <- function(data,
   if (status > 0) {
     clust <- summary <- trace <- NA
   } else {
-    clust <- reorder_clust(clust)
-    data <- data_input
+    clust <- reorder_clust(clust) # waste computation; TODO: just remove the gap
     summary <- select_summary(summary) 
     trace <- select_trace(trace)
   }
@@ -542,6 +548,7 @@ eval_sol <- function(data,
                           z_type = NA,
                           intersects = NA,
                           clustsize_f = NA)
+    # summary <- NA
     return(summary)
   }
   
@@ -662,9 +669,9 @@ print.stblob_sol <- function(x, ...) {
 }
 
 # summary.blobs ---------------------------------------------------------------
-summary.stblob_sol <- function(sol, ...) {
-  print(sol$summary)
-  invisible(sol)
+summary.stblob_sol <- function(x, ...) {
+  print(x$summary)
+  invisible(x)
 }
 
 # helpers ---------------------------------------------------------------------
@@ -713,6 +720,39 @@ remove_outliers <- function(data,
   return(out)
 }
 
+## check_ls_args --------------------------------------------------------------
+check_ls_args <- function(k, w_space, w_time, w_type) {
+  stopifnot(
+    "'k' must be numeric of length 1" =
+      is.numeric(k) && length(k) == 1,
+    "'w_space' must be between 0 and 1" =
+      w_space >= 0 && w_space <= 1,
+    "'w_time' must be between 0 and 1" =
+      is.null(w_time) || (w_time >= 0 && w_time <= 1),
+    "'w_type' must be between 0 and 1" =
+      is.null(w_type) || (w_type >= 0 && w_type <= 1)
+  )
+  
+  w_time_null <- is.null(w_time)
+  w_type_null <- is.null(w_type)
+  
+  if (sum(w_time_null, w_type_null) == 0) {
+    stopifnot(
+      "'w_space', 'w_time' and 'w_type' must sum up to 1" =
+        isTRUE(all.equal(sum(w_space, w_time, w_type), 1)) 
+    )
+  }
+  
+  if (sum(w_time_null, w_type_null) == 1) {
+    stopifnot(
+      "'w_space', 'w_time' and 'w_type' must sum up to 1" =
+        isTRUE(all.equal(sum(w_space, w_time, w_type), 1)) || sum(w_space, w_time, w_type) < 1
+    )
+  }
+  
+  invisible(NULL)
+}
+
 ## check_intersects -----------------------------------------------------------
 check_intersects <- function(data,
                              clust,
@@ -752,7 +792,7 @@ check_intersects <- function(data,
   return(out)
 }
 
-## select_bs ------------------------------------------------------------------
+## select ---------------------------------------------------------------------
 select_summary <- function(x) {
   # select stblob_lsearch() summary columns
   x <- x[ , c("k", "w_space", "w_time", "w_type",
