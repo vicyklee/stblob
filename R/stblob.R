@@ -26,7 +26,7 @@
 #' 
 #' By sampling a range of parameter combinations of `w_space`, `w_time` and `w_type`,
 #' it populates solutions that locally optimise trade-offs between spatial,
-#' temporal and data type diversity cost functions using augmented weighted
+#' temporal and data type cost functions using augmented weighted
 #' Chebyshev (Tchebycheff) scalarisation (Steuer & Choo, 1983)
 #' across \eqn{k} clusters.
 #' Sampling is done via Latin hypercube sampling ([lhs::randomLHS()]) for a
@@ -220,7 +220,6 @@ stblob <- function(data,
     p <- progressr::progressor(along = 1:batch) 
     
     for (i in 1:batch) {
-      print("pre_stblob_populate")
       pop <- stblob_populate(data = data,
                              k = k,
                              w_space = w_space,
@@ -239,14 +238,11 @@ stblob <- function(data,
                              workers = workers,
                              ...)
       
-      print("post_stblob_populate")
       # progress
       p()
       
       if (i > 1) {
-        print("pre_combine")
         pop <- combine_pop(pop_prev, pop)
-        print("post_combine")
         # count the dup from the second pop
         dup <- pop$filter_summary$dup
         dup <- dup - dup_prev
@@ -257,16 +253,13 @@ stblob <- function(data,
         # update k parameter
         if (length(k_done) > 0) k <- k[!k %in% k_done]
         
-        print("pre_update")
         w_space <- update_w_space(w_space = w_space,
                                   filter_summary = pop$filter_summary,
                                   k_prev = k_prev,
                                   k = k)
-        print("post_update")
-        print("pre_eval_moo")
+        
         # eval_moo
         moo <- eval_moo(pop, optim_type_diversity, moo_tol)
-        print("post_eval_moo")
         # converged then break
         if (!is.na(moo$moo_convergence) && moo$moo_convergence) break
         # k will be emptied, no more searches but not techniquely the same as convergence defined here
@@ -312,14 +305,12 @@ stblob <- function(data,
 #' @export
 
 eval_moo <- function(pop, optim_type_diversity, moo_tol) {
-  print("1")
   batch <- sum(unlist(pop$params$batch))
   
   # checks
   stopifnot("'batch' must be at least 2" = batch > 1L,
             "'pop' must be an S3 'stblob_pop' object" = inherits(pop, "stblob_pop"))
   
-  print("2")
   # no solution
   if (all(is.na(pop$clust)) && length(pop$clust) == 1) {
     return(new_moo(paretof_idx = NA,
@@ -333,7 +324,6 @@ eval_moo <- function(pop, optim_type_diversity, moo_tol) {
                    params = pop$params))
   }
   
-  print("3")
   # 1 solution from 2 batches
   if (nrow(pop$clust) == 1) {
     # insert paretof column as NA
@@ -360,7 +350,6 @@ eval_moo <- function(pop, optim_type_diversity, moo_tol) {
     # obj <- c("space_distance", "time_variance", "time_evenness", "type_diversity")
     # obj <- if (optim_type_diversity) obj else obj[1:3]
   
-  print("4")
   # objective values and space
   z_cols <- c("z_space", "z_time1", "z_time2", "z_type")
   z_cols <- if (optim_type_diversity) z_cols else z_cols[1:3]
@@ -375,60 +364,55 @@ eval_moo <- function(pop, optim_type_diversity, moo_tol) {
   # igd <- igd_plus <- hv <- cum_n <- numeric()
   igd <- igd_plus <- hv <- numeric()
   summary$paretof <- trace$paretof <- FALSE
-  print("5")
+  
   # Pareto front across all solutions
   # s <- subset(obj_space, select = -batch)
   paretof_idx <- which(moocore::is_nondominated(z))
   paretof_z <- z[paretof_idx, ]
   # rank idx
   paretof_idx <- paretof_idx[do.call(order, paretof_z[, z_cols])]
-  print("6")
+
   for (i in 1:batch) {
-    print(paste0("batch: ", i))
-    print("a")
     # subset solutions till batch i
     b <- append(b, i)
     z_i <- z[pop$summary$batch %in% b, ]
-    # n <- nrow(z_i)
-    # cum_n[i] <- n #### cumulative total solution is not informative
-    print("b")
+    
     # skip empty cumulative batch
     if (nrow(z_i) == 0) next
-    print("c")
+    
     # find solutions on the Pareto front
     paretof_idx_i <- which(moocore::is_nondominated(z_i))
+    
+    ##################################
     # record the idx for every batch
     # paretof_idx_l[[i]] <- paretof_idx_i
+    ##################################
+    
     paretof_z_i <- z_i[paretof_idx_i, ]
-    print("d")
+    
     # compute IGD, IGD+ and Hypervolume
-    print(paretof_z_i)
-    print(paretof_z)
-    print("igd")
     igd[i] <- moocore::igd(x = paretof_z_i, reference = paretof_z)
-    print("igd+")
     igd_plus[i] <- moocore::igd_plus(x = paretof_z_i, reference = paretof_z)
-    print("hv")
     hv[i] <- moocore::hypervolume(x = paretof_z_i, reference = rep(1.1, length(z_cols))) # 1.1 such that it would not become 0
   }
-  print("7")
+  
   # label summary and trace
   summary$paretof[which(summary$idx %in% paretof_idx)] <-
     trace$paretof[which(trace$idx %in% paretof_idx)] <- TRUE
-  print("8")
+
   # count paretof_n per batch
   paretof_n <- as.data.frame(table(subset(summary, paretof == TRUE)[["batch"]]))
   names(paretof_n) <- c("batch", "paretof_n")
   paretof_n <- merge(data.frame(batch = 1:batch), paretof_n, all.x = TRUE)
   paretof_n[is.na(paretof_n)] <- 0
-  print("9")
+
   # MOO indicators 
   moo_diagnostics <- data.frame(batch = 1:batch,
                                 igd = igd,
                                 igd_plus = igd_plus,
                                 hv = hv,
                                 paretof_n = paretof_n[["paretof_n"]])
-  print("10")
+
   # reorder summary and trace columns
   summary <- summary[c("idx","paretof", setdiff(names(summary), c("idx","paretof")))]
   trace <- trace[c("idx","paretof", setdiff(names(trace), c("idx","paretof")))]
@@ -436,22 +420,22 @@ eval_moo <- function(pop, optim_type_diversity, moo_tol) {
   # check convergence
   # percentage change in hv in the last 3 batches
   moo_convergence <- FALSE
-  print("11")
+
   if (i > 3) {
     hv_deltas <- diff(hv) / head(hv, -1)
     hv_deltas <- tail(hv_deltas, 3)
     moo_convergence <- all(hv_deltas < moo_tol)
   }
-  print("12")
+
   moo <- new_moo(paretof_idx = paretof_idx,
                  clust = pop$clust,
                  summary = summary,
                  trace = trace,
                  moo_convergence = moo_convergence,
                  moo_diagnostics = moo_diagnostics,
-                 # obj = obj,
                  filter_summary = pop$filter_summary,
                  data = pop$data,
+                 # obj = obj,
                  # paretof_idx_l = paretof_idx_l,
                  params = pop$params)
   
@@ -622,16 +606,16 @@ update_w_space <- function(w_space, filter_summary, k_prev, k) {
 
 ## new_stblob -----------------------------------------------------------------
 new_moo <- function(paretof_idx,
-                       clust,
-                       summary,
-                       trace,
-                       moo_convergence,
-                       moo_diagnostics,
-                       filter_summary,
-                       obj,
-                       data,
-                       paretof_idx_l,
-                       params) {
+                    clust,
+                    summary,
+                    trace,
+                    moo_convergence,
+                    moo_diagnostics,
+                    filter_summary,
+                    data,
+                    # obj,
+                    # paretof_idx_l,
+                    params) {
   
   stopifnot(is.numeric(paretof_idx) || (length(paretof_idx) == 1 && all(is.na(paretof_idx))),
             is.matrix(clust) || (length(clust) == 1 && all(is.na(clust))) ,
@@ -639,9 +623,9 @@ new_moo <- function(paretof_idx,
             is.data.frame(trace) || (length(trace) == 1 && all(is.na(trace))),
             is.logical(moo_convergence),
             is.data.frame(moo_diagnostics) || (length(moo_diagnostics) == 1 && all(is.na(moo_diagnostics))),
-            # is.character(obj),
             is.data.frame(filter_summary),
             is.data.frame(data),
+            # is.character(obj),
             # is.null(paretof_idx_l) || is.list(paretof_idx_l),
             is.null(params) || is.list(params))
   
@@ -652,9 +636,9 @@ new_moo <- function(paretof_idx,
          trace = trace,
          moo_convergence = moo_convergence,
          moo_diagnostics = moo_diagnostics,
-         # obj = obj,
          filter_summary = filter_summary,
          data = data,
+         # obj = obj,
          # paretof_idx_l = paretof_idx_l,
          params = params),
     class = c("stblob_moo", "stblob_pop")
