@@ -13,13 +13,66 @@ compute_space_costs <- function(space_distmat, clust_points) {
   return(space_costs) 
 }
 
+# check_data_cols -------------------------------------------------------------
+check_args <- function(data,
+                       optim_type_diversity,
+                       iter,
+                       coords,
+                       age,
+                       type) {
+  
+  stopifnot(
+    "'data' must be a data frame" =
+      is.data.frame(data),
+    "'optim_type_diversity' must be logical of length 1" =
+      is.logical(optim_type_diversity) && length(optim_type_diversity) == 1,
+    "'iter' must be numeric of length 1" =
+      is.numeric(iter) && length(iter) == 1
+  )
+  
+  # check the length of the input
+  args <- list(coords, age, type)
+  arg_defaults <- list(c(2,3), 4, 5)
+  arg_names <- c("coords", "age", "type")
+  arg_lens <- c(2L,1L,1L)
+  
+  IDX <- numeric()
+  for (i in 1:3) {
+    # skip type check if !optim_type_diversity
+    if (!optim_type_diversity) {
+      if (arg_names[i] == "type") next
+    }
+    
+    # check arg length
+    if (!(length(args[[i]]) == arg_lens[i] || is.null(args[[i]]))) {
+      stop(sprintf("'%s' must be of length %i", arg_names[i], arg_lens[i]))
+    }
+    
+    # check if args match data columns
+    idx <- if (!is.null(args[[i]])) match(args[[i]], names(data)) else arg_defaults[[i]]
+    if (any(is.na(idx)) && all(idx <= ncol(data))) {
+      stop(sprintf("%s does not match any column names", arg_names[[i]]))
+    }
+    IDX <- append(IDX, idx)
+    
+    # check arg types for coords and age
+    if (arg_names[i] == "coords") stopifnot("'coords' column must be numeric" = is.numeric(data[[ idx[1] ]]) && is.numeric(data[[ idx[2] ]]))
+    if (arg_names[i] == "age") stopifnot("'age' column must be numeric" = is.numeric(data[[idx]]))
+  }
+  
+  # check if any column idx used twice
+  stopifnot("Same 'data' column(s) used twice" = all(table(IDX) == 1))
+  
+  invisible(NULL)
+}
+
 # check_space_distmat ---------------------------------------------------------
 check_space_distmat <- function(data,
                                 coords,
                                 space_distmat,
                                 space_distmethod) {
   if(is.null(space_distmat)) {
-    
+    # check space_distmethod
     if (is.null(space_distmethod)) {
       space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
       message(paste0(space_distmethod," is used to compute space_distmat"))
@@ -30,7 +83,7 @@ check_space_distmat <- function(data,
     space_distmat <- compute_distmat(data = data[coords], method = space_distmethod)
     
   } else {
-    
+    # check space_distmat
     stopifnot(
       "'space_distmat' must be a numeric matrix or a 'dist' object" =
         is.numeric(space_distmat),
@@ -64,8 +117,7 @@ check_opt_args <- function(ls_tol = 0,
                            outlier_removal = FALSE,
                            outlier_iqrm = 1.5,
                            random_init = FALSE,
-                           sf_use_s2 = TRUE,
-                           ...) {
+                           sf_use_s2 = TRUE) {
   
   stopifnot(
     "'ls_tol' must be between 0 and 1" =
@@ -135,8 +187,15 @@ minmax <- function(x, lb = NULL, ub = NULL, max = FALSE, na.rm = TRUE) {
   lb <- min(x, lb, na.rm = na.rm) %||% min(x, na.rm = na.rm)
   # upper bound
   ub <- max(x, ub, na.rm = na.rm) %||% max(x, na.rm = na.rm)
+  
   # normalise
-  x <- if (!max) (x - lb) / (ub - lb) else (x - ub) / (lb - ub)
+  if (!max) {
+    x <- (x - lb) / (ub - lb)
+    x <- if (!is.na(x)) x else 0
+  } else {
+    x <- (x - ub) / (lb - ub)
+    x <- if (!is.na(x)) x else 1
+  } 
   return(x)
 }
 
