@@ -3,13 +3,14 @@
 \docType{data}
 \name{threeblobs}
 \alias{threeblobs}
-\title{Demo data}
+\title{Demo data of three blobs}
 \format{
-A data frame with 300 rows and 4 columns:
+A 300x4 data frame:
 \describe{
-\item{x, y}{Spatial coordinates of the original dataset}
-\item{age}{Ordered age for demomstration}
-\item{clust}{Simulated spatial cluster}
+\item{sample_id}{Sample ID}
+\item{x,y}{x and y coordinates (correspond to longitude and latitude of spatiotemporal data)}
+\item{z}{z coordinate (corresponds to age/time of spatiotemporal data)}
+\item{type}{Data type (in this case simulated spatial cluster)}
 }
 }
 \source{
@@ -19,6 +20,6 @@ This package
 threeblobs
 }
 \description{
-Demo data
+Demo data of three blobs
 }
 \keyword{datasets}

@@ -49,8 +49,6 @@ gen_gaussian_data <- function(n, size, center = NULL, ...) {
 }
 
 ## generate toy data ----------------------------------------------------------
-# install.packages("mvtnorm")
-
 set.seed(12)
 x_y_type <- gen_gaussian_data(
   n = 3,
@@ -71,3 +69,20 @@ threeblobs <- cbind(sample_id = 1:nrow(x_y_type), x_y_type, z)
 threeblobs <- as.data.frame(threeblobs[c("sample_id", "x", "y", "z", "type")])
 
 usethis::use_data(threeblobs, overwrite = TRUE)
+
+## subset ---------------------------------------------------------------------
+# for @example and testthat
+set.seed(234)
+threeblobs_s <- threeblobs[sort(sample(nrow(threeblobs), 30)), ]
+rownames(threeblobs_s) <- NULL
+
+usethis::use_data(threeblobs_s, overwrite = TRUE)
+
+threeblobs_s_sdistm <- compute_distmat(threeblobs_s[c("x","y")], method = "euclidean")
+
+usethis::use_data(threeblobs_s_sdistm, overwrite = TRUE)
+
+## outlier --------------------------------------------------------------------
+threeblobs_o <- threeblobs
+threeblobs_o[300, ] <- c(300, 1, -5, 100, 3)
+usethis::use_data(threeblobs_o, overwrite = TRUE)
