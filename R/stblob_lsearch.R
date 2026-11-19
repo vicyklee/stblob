@@ -146,7 +146,7 @@
 #' stblob_lsearch(data = data, k = 3, w_space = 0.8, space_distmat = space_distmat)
 #' 
 #' # specify 'data' columns
-#' set.seed(123)s
+#' set.seed(123)
 #' stblob_lsearch(data = data, k = 3, w_space = 0.8, optim_type_diversity = TRUE, coords = c("x","y"), age = "age", type = "type")
 #'
 #' @export
