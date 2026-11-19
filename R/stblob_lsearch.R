@@ -1,30 +1,33 @@
-#' Core local search algorithm
+#' Multi-objective local search algorithm
 #' 
 #' @description
-#' `stblob_lsearch()` performs a local search algorithm to assign clusters
-#' for a given number of clusters (`k`).
+#' The function performs a local search algorithm to
+#' assign samples to a given number of clusters.
 #' 
 #' @param data a data frame or matrix with spatial coordinates, age and optionally
 #' type of the data.
 #' @param k number of clusters.
-#' @param w_space relative spatial weight of range \eqn{\[0,1\]}.
+#' @param w_space relative spatial weight of range \eqn{[0,1]}.
 #' @param optim_type_diversity a logical value to optimise data type diversity.
 #' Default is `FALSE`.
-#' @param w_time relative temporal weight of range \eqn{\[0,1\]}. Default is `NULL`.
-#' @param w_type relative data type diversity weight of range \eqn{\[0,1\]}. Default is `NULL`.
-#' @param iter number of iterations. Default is `10L`.
-#' @param ls_tol tolerance for local search optimisation. The difference to the
-#' highest Adjusted Rand Index (ARI) (i.e. `1` -- identitical) for three
-#' consecutive iterations to be considered reaching convergence. Default is `0`.
+#' @param w_time relative temporal weight of range \eqn{[0,1]}. Default is `NULL`.
+#' @param w_type relative data type diversity weight of range \eqn{[0,1]}. Default is `NULL`.
+#' @param iter number of maximum iterations. Default is `100L`.
 #' @param coords a vector of character strings of length `2L`.
-#' Default is `NULL` with the 2nd and 3rd columns of `data` as longitude and latitude. 
-#' @param age a character string. Default is `NULL` with the 4th column of `data`.
-#' @param type a character string. Default is `NULL` with the 5th column of `data`.
+#' Default is `NULL` with the 2nd and 3rd columns of `data` selected as longitude and latitude. 
+#' @param age a character string. Default is `NULL` with the 4th column of `data` selected
+#' @param type a character string. Default is `NULL` with the 5th column of `data` selected
 #' @param space_distmat a spatial distance matrix or `dist` object.
 #' Default is `NULL`.
 #' @param space_distmethod spatial distance method used when `space_distmat`
 #' is not specified. Either `"geodesic"` or `"euclidean"` is available (see
 #' [compute_distmat()]). Default is `"geodesic"`.
+#' @inheritParams compute_distmat distGeo_a distGeo_f
+#' @param ls_tol tolerance for local search optimisation. The difference to the
+#' Adjusted Rand Index (ARI) of identical assignments (i.e. 1) for three
+#' consecutive iterations to be considered reaching convergence. Default is `0`.
+#' @param chebyshev_rho (testing) weight \eqn{\rho} in the weighted sum
+#' component of augmented Chebyshev scalarisation. Default is `1e-4`.
 #' @param filter_intersects a logical value to remove a solution with intersects
 #' in space. Default is `TRUE`.
 #' @param hull_convex_ratio a numeric value indicating the convexity of the
@@ -35,10 +38,7 @@
 #' @param filter_clustsize a logical value to remove a solution with clusters
 #' below the expected size. Default is `TRUE`.
 #' @param outlier_removal (testing) a logical value to remove outliers. Default is `FALSE`.
-#' @param outlier_iqrm (testing) multiplier of IQR for detecting outliers. Default is `1.5`.
-#' @param chebyshev_rho (testing) weight \eqn{\rho} in the weighted sum
-#' component of augmented Chebyshev scalarisation. Default is `1e-4`.
-#' @param outlier_iqrm (testing) multiplier of IQR for detecting outliers. Default is `1.5`.
+#' @param outlier_iqrm (testing) multiplier of IQR for detecting outliers. Default is `3`.
 #' @param random_init a logical value to choose random initial cluster points
 #' instead of using a heuristic to choose points with approximately greatest 
 #' separations. Default is `FALSE`.
@@ -46,48 +46,50 @@
 #' See [sf::sf_use_s2()]. Default is `TRUE`.
 #' 
 #' @details
-#' The core local search algorithm searches for clusters that optimise
+#' The local search algorithm searches for clusters that optimise
 #' within-cluster spatial proximity, temporal coverage, and data type
 #' information simultaneously.
-#' Spatially, it uses k-medoid clustering approach (Kaufman & Rousseeuw, 1987),
+#' For space, it uses k-medoid clustering approach (Kaufman & Rousseeuw, 1987),
 #' implemented similarly to the standard k-means clustering algorithm 
-#' (Lloyd, 1982). For time and data type diversity, greedy algorithms are
-#' used to optimise within-cluster temporal variance and evenness, as well as data
-#' types contained in each cluster.
+#' (Lloyd, 1982). For time and data type, greedy algorithms are
+#' used to optimise within-cluster temporal variance and evenness, as well as
+#' the diversity of data types contained in each cluster.
 #' 
-#' The cost functions are combined into a single function using augmented
-#' weighted Chebyshev (Tchebycheff) (Steuer & Choo, 1983).
-#' To ensure the costs are evaluated on comparable scales as specified by the
-#' relative weights with the parameters `w_space`, `w_time` and `w_type`,
+#' Augmented weighted Chebyshev (Tchebycheff) scalarisation (Steuer & Choo, 1983)
+#' is used to transform the multi-objective optimisation (MOO) problem into
+#' a single objective one.
+#' To ensure the cost functions are evaluated on a comparable scale,
 #' they are normalised with respect to the costs across \eqn{k} clusters at each 
-#' step by min-max normalisation.
+#' step.
 #' 
 #' A solution is evaluated based on the following objectives:
-#'
-#' * `space_distance`: average within-cluster spatial distances to the medoid
-#' * `time_variance`:  average within-cluster temporal variance
-#' * `time_evenness`: average within-cluster temporal variance of first differences
-#' * `type_diversity` (`optim_type_diversity = TRUE`): average within-cluster Shannon entropy of data types
+#' 1. Average within-cluster spatial distances to the medoid
+#' 2. Average within-cluster temporal variance
+#' 3. Average within-cluster temporal variance of first differences
+#' 4. Average within-cluster Shannon entropy of data types (`optim_type_diversity = TRUE`)
 #' 
-#' Objective values (\eqn{z}) are returned in the `summary`
+#' Objective values (\eqn{z}) are returned in `summary`
 #' by the terms `z_space`, `z_time1`, `z_time2` and `z_type` respectively.
-#' The maximisation objectives are multiplied by -1
-#' as a minimisation problem in multi-objective optimisation (MOOO).
+#' The objectives to maximise are multiplied by -1 as objective functions
+#' are minimised in [stblob()].
 #' 
-#' The search will terminate until either the ARI tolerance to the previous
-#' iteration are at most as specified by `ls_tol` for three consecutive
-#' iterations or the maximum iteration is reached as specified by `iter`.
+#' To accelerate the search, 
+#' the algorithm terminates until ARI tolerance criterion (see `ls_tol`) is met
+#' or the maximum iteration (`iter`) is reached.
 #' 
-#' An ideal partition should return clusters of roughly equal sizes. The
-#' size threshold of a cluster is defined as \eqn{\frac{n}{2k}} where \eqn{n} is
-#' the number of data points and \eqn{k} the number of clusters.
-#' `filter_clustsize = TRUE` will remove the solution with any clusters
-#' below the expected size
-#' `filter_intersects = TRUE` constrains feasible solutions to
-#' partitions with non-overlapping boundaries. The boundaries are constructed by
-#' concave/convex hulls, of which the convexity is controlled by
+#' Ideally, a partition should return clusters of roughly equal sizes.
+#' Under this logic, a size threshold for a cluster is defined to be
+#' \eqn{\frac{n}{2k}} where \eqn{n} is
+#' the number of data points and \eqn{k} refers to the number of clusters.
+#' When `filter_clustsize = TRUE`, solutions with any clusters
+#' below the expected size will be removed.
+#' Additionally,
+#' `filter_intersects = TRUE` will constrain feasible solutions to
+#' partitions with non-overlapping boundaries.
+#' The boundaries are constructed by polygons surrounding the data points,
+#' for which their convexity is controlled by
 #' `hull_convex_ratio` passed onto the `ratio` of [sf::st_concave_hull()].
-#' The default value of `0.5` is arbitrary. 
+#' The default value of `0.5` is arbitrarily chosen.
 #'
 #' `outlier_removal` is being tested at the moment. The idea is to remove points
 #' whose distance to their medoid is an outlier based on the
@@ -125,6 +127,27 @@
 #' Steuer, R. E., & Choo, E.-U. (1983). An interactive weighted Tchebycheff
 #' procedure for multiple objective programming. Mathematical Programming,
 #' 26(3), 326–344.
+#' 
+#' @examples
+#' # load demo data
+#' data <- threeblobs_s
+#' 
+#' # optimise within-cluster spatial proximity and temporal coverage
+#' set.seed(123)
+#' stblob_lsearch(data = data, k = 3, w_space = 0.8)
+#' 
+#' # optimise within-cluster spatial proximity, temporal coverage and data type diversity
+#' set.seed(123)
+#' stblob_lsearch(data = data, k = 3, w_space = 0.8, optim_type_diversity = TRUE)
+#' 
+#' # optimise with a precomputed spatial distance matrix
+#' space_distmat <- threeblobs_s_sdistm
+#' set.seed(123)
+#' stblob_lsearch(data = data, k = 3, w_space = 0.8, space_distmat = space_distmat)
+#' 
+#' # specify 'data' columns
+#' set.seed(123)s
+#' stblob_lsearch(data = data, k = 3, w_space = 0.8, optim_type_diversity = TRUE, coords = c("x","y"), age = "age", type = "type")
 #'
 #' @export
 
@@ -132,7 +155,7 @@ stblob_lsearch <- function(data,
                            k,
                            w_space, 
                            optim_type_diversity = FALSE,
-                           iter = 10L,
+                           iter = 100L,
                            w_time = NULL,
                            w_type = NULL,
                            
@@ -142,6 +165,8 @@ stblob_lsearch <- function(data,
                            type = NULL, 
                            space_distmat = NULL,
                            space_distmethod = c("geodesic", "euclidean"),
+                           distGeo_a = 6378137,
+                           distGeo_f = 1/298.257223563,
                            
                            # constraints and additional local search arguments
                            ls_tol = 0,
@@ -151,7 +176,7 @@ stblob_lsearch <- function(data,
                            hull_crs = 4326,
                            filter_clustsize = TRUE, 
                            outlier_removal = FALSE,
-                           outlier_iqrm = 1.5,
+                           outlier_iqrm = 3,
                            random_init = FALSE,
                            sf_use_s2 = TRUE) {
   
@@ -167,18 +192,13 @@ stblob_lsearch <- function(data,
              age = age,
              type = type)
   
-  check_ls_args(k = k, w_space = w_space, w_time = w_time, w_type = w_type)
+  check_ls_args(k = k, w_space = w_space, w_time = w_time, w_type = w_type, N = nrow(data))
   
-    
   # assign column names to NULL
   coords <- coords %||% names(data)[c(2,3)]
   age <- age %||% names(data)[4]
   type <- if (optim_type_diversity) type %||% names(data)[5] else NULL
   w_type <- if (optim_type_diversity) w_type else 0
-  
-  # calculate relative weights for NULL weights
-  # w_type <- w_type %||% 0
-  # w_time <- w_time %||% (1 - w_space - w_type)
   
   # calculate relative weights for NULL weights
   if (is.null(w_time) && is.null(w_type)) {
@@ -201,10 +221,12 @@ stblob_lsearch <- function(data,
   space_distmat <- check_space_distmat(data = data,
                                        coords = coords,
                                        space_distmat = space_distmat,
-                                       space_distmethod = space_distmethod)
+                                       space_distmethod = space_distmethod,
+                                       distGeo_a = distGeo_a,
+                                       distGeo_f = distGeo_f)
   
   # in case crs is not specified otherwise
-  if (space_distmethod == "euclidean") hull_crs <- NA
+  if (match.arg(space_distmethod, c("geodesic", "euclidean")) == "euclidean") hull_crs <- NA
   
   # check other args
   check_opt_args(ls_tol = ls_tol,
@@ -275,7 +297,7 @@ stblob_lsearch <- function(data,
     # if converged between t and t-1 for three consecutive iter, break
     if (!is.null(ls_tol)) {
       if (t > 3) {
-        if (all(tail(trace$ari, 3) >= 1 - ls_tol)) {
+        if (all(utils::tail(trace$ari, 3) >= 1 - ls_tol)) {
           summary$ls_convergence <- TRUE
           break
         } 
@@ -295,24 +317,26 @@ stblob_lsearch <- function(data,
     # update summary after removing outliers
     summary_updated <- eval_sol(data = data,
                                 clust = clust,
+                                coords = coords,
                                 age = age,
                                 type = type,
+                                optim_type_diversity = optim_type_diversity,
                                 hull_convex_ratio = hull_convex_ratio,
                                 hull_crs = hull_crs,
                                 space_distmat = space_distmat,
                                 sf_use_s2 = sf_use_s2)
     summary[names(summary_updated)] <- summary_updated
   } else {
-    n_outliers <- 0
+    n_outliers <- 0L
   }
   
   # add column n_outliers to summary
   summary$n_outliers <- n_outliers
   
   # filter solution with intersects and clustsize_f
-  status <- status_intersects <- status_clustsizef <- 0
+  status <- status_intersects <- status_clustsizef <- 0L
   
-  if (summary$k_o < 2) {
+  if (summary$k_o < 2L) {
     message("Status code 1: Only 1 returning cluster.")
     status <- 1
   }
@@ -330,16 +354,16 @@ stblob_lsearch <- function(data,
   if (status_ic_sum > 0) {
     switch(
       status_ic_sum,
-      { message("Status code 2: Intersecting clusters."); status <- 2 },
-      { message("Status code 3: Cluster size below threshold."); status <- 3 },
-      { message("Status code 4: Intersecting clusters & cluster size below threshold."); status <- 4 }
+      { message("Status code 2: Intersecting clusters"); status <- 2L },
+      { message("Status code 3: Cluster size below threshold"); status <- 3L },
+      { message("Status code 4: Intersecting clusters & cluster size below threshold"); status <- 4L }
     )
   }
   
   if (status > 0) {
-    clust <- summary <- trace <- NA
+    clust <- summary <- trace <- NULL
   } else {
-    clust <- reorder_clust(clust) # waste computation; TODO: just remove the gap
+    clust <- reorder_clust(clust) # remove the gaps
     summary <- select_summary(summary) 
     trace <- select_trace(trace)
   }
@@ -533,6 +557,7 @@ eval_sol <- function(data,
                      hull_convex_ratio,
                      hull_crs,
                      sf_use_s2) {
+  
   # total number of points
   N <- sum(!is.na(clust))
   # set of unique cluster indices
@@ -540,17 +565,7 @@ eval_sol <- function(data,
   # total number of clusters in the output
   k_o <- length(K) # NA is excluded
   
-  if (k_o < 2) {
-    summary <- data.frame(k_o = k_o,
-                          z_space = NA,
-                          z_time1 = NA,
-                          z_time2 = NA,
-                          z_type = NA,
-                          intersects = NA,
-                          clustsize_f = NA)
-    # summary <- NA
-    return(summary)
-  }
+  if (k_o < 2) return(NULL)
   
   # initialise empty vectors for objective values and sizes of clusters
   # objective value
@@ -607,18 +622,17 @@ eval_sol <- function(data,
         n <- length(clust_points_l)
   
         # temporal objectives
-        z_time1 <- append(z_time1, n * var(ages_l))
+        z_time1 <- append(z_time1, n * stats::var(ages_l))
         z_time2 <- append(z_time2, n * stats::var(diff(sort(ages_l))))
       }
     } else {
-      z_time1 <- append(z_time1, n * var(ages_j) )
+      z_time1 <- append(z_time1, n * stats::var(ages_j) )
       z_time2 <- append(z_time2, n * stats::var(diff(sort(ages_j))))
     }
   }
   
   # calculate summary statistics
-  # https://stats.stackexchange.com/questions/122668/is-there-a-measure-of-evenness-of-spread
-  # "n_qk / N" or "n_k / N" is the weight 
+  # see https://stats.stackexchange.com/questions/122668/is-there-a-measure-of-evenness-of-spread
   
   # space_distance
   z_space <- sum(z_space, na.rm = TRUE) / N
@@ -636,6 +650,7 @@ eval_sol <- function(data,
                                  hull_convex_ratio = hull_convex_ratio,
                                  hull_crs = hull_crs,
                                  sf_use_s2 = sf_use_s2)
+  
   # count the number of clusters below threshold
   clustsize_f <- sum(clustsize_f)
   
@@ -650,39 +665,17 @@ eval_sol <- function(data,
   return(summary)
 }
 
-# print.blobs -----------------------------------------------------------------
-print.stblob_sol <- function(x, ...) {
-  if(x$status == 0) {
-    cat("STblob solution\n")
-    cat("$clust\n# cluster assignments:\n")
-    print(head(x$clust, 20))
-    if (length(x$clust) > 20) cat(paste0(" <", length(x$clust) - 20," more points>\n"))
-    cat("\n")
-    cat("$summary\n# summary:\n")
-    print(x$summary)
-  } else {
-    cat("No feasible solution was found.")
-    cat("\n")
-    cat(paste0("status code: ", x$status, "\n"))
-  }
-  invisible(x)
-}
-
-# summary.blobs ---------------------------------------------------------------
-summary.stblob_sol <- function(x, ...) {
-  print(x$summary)
-  invisible(x)
-}
-
 # helpers ---------------------------------------------------------------------
 ## remove_outliers ------------------------------------------------------------
-# This version is based on the distances to medoid and remove them adhoc
+# This version is based on the distances to medoid
 remove_outliers <- function(data,
                             clust,
                             coords,
-                            space_distmat = NULL,
-                            space_distmethod = NULL,
-                            iqrm = 1.5) {
+                            space_distmat,
+                            space_distmethod,
+                            iqrm = 3,
+                            distGeo_a = distGeo_a,
+                            distGeo_f = distGeo_f) {
   
   # total number of clusters
   K <- unique(stats::na.omit(clust)) # NA is excluded
@@ -691,7 +684,9 @@ remove_outliers <- function(data,
   space_distmat <- check_space_distmat(data = data,
                                        coords = coords,
                                        space_distmat = space_distmat,
-                                       space_distmethod = space_distmethod)
+                                       space_distmethod = space_distmethod,
+                                       distGeo_a = distGeo_a,
+                                       distGeo_f = distGeo_f)
   
   # remove outliers
   space_costs <- numeric()
@@ -706,11 +701,10 @@ remove_outliers <- function(data,
   space_costs <- space_costs[order(order)]
   # https://www.geeksforgeeks.org/data-analysis/what-is-outlier-detection/
   # https://www.geeksforgeeks.org/machine-learning/interquartile-range-to-detect-outliers-in-data/
-  q <- quantile(space_costs, c(0.25, 0.75)) # Q1 and Q3
+  q <- stats::quantile(space_costs, c(0.25, 0.75)) # Q1 and Q3
   # interquartile range
   iqr <- q[2] - q[1]
   # upper limit
-  # ub <- q[2] + 1.5 * iqr
   ub <- q[2] + iqrm * iqr
   outliers <- which(space_costs > ub)
   n_outliers <- length(outliers)
@@ -721,10 +715,12 @@ remove_outliers <- function(data,
 }
 
 ## check_ls_args --------------------------------------------------------------
-check_ls_args <- function(k, w_space, w_time, w_type) {
+check_ls_args <- function(k, w_space, w_time, w_type, N) {
   stopifnot(
     "'k' must be numeric of length 1" =
       is.numeric(k) && length(k) == 1,
+    "'k' must be at least 2 and smaller than the number of samples" = 
+      k > 1L && k < N,
     "'w_space' must be between 0 and 1" =
       w_space >= 0 && w_space <= 1,
     "'w_time' must be between 0 and 1" =
@@ -813,11 +809,11 @@ select_trace <- function(x) {
 
 ## new_blobs ------------------------------------------------------------------
 new_sol <- function(clust, summary, trace, data, space_distmat, status, params) {
-  stopifnot(is.numeric(clust) || (length(clust) == 1 && all(is.na(clust))),
-            is.data.frame(summary) || (length(summary) == 1 && all(is.na(summary))),
-            is.data.frame(trace) || (length(trace) == 1 && all(is.na(trace))),
+  stopifnot(is.numeric(clust) || is.null(clust),
+            is.data.frame(summary) || is.null(summary),
+            is.data.frame(trace) || is.null(trace),
             is.data.frame(data),
-            is.matrix(space_distmat),
+            is.matrix(space_distmat) && is.numeric(space_distmat),
             is.numeric(status),
             is.list(params))
   

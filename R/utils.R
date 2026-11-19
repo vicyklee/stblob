@@ -26,8 +26,8 @@ check_args <- function(data,
       is.data.frame(data),
     "'optim_type_diversity' must be logical of length 1" =
       is.logical(optim_type_diversity) && length(optim_type_diversity) == 1,
-    "'iter' must be numeric of length 1" =
-      is.numeric(iter) && length(iter) == 1
+    "'iter' must be positive numeric of length 1" =
+      is.numeric(iter) && length(iter) == 1 && iter >= 1
   )
   
   # check the length of the input
@@ -50,8 +50,8 @@ check_args <- function(data,
     
     # check if args match data columns
     idx <- if (!is.null(args[[i]])) match(args[[i]], names(data)) else arg_defaults[[i]]
-    if (any(is.na(idx)) && all(idx <= ncol(data))) {
-      stop(sprintf("%s does not match any column names", arg_names[[i]]))
+    if (any(is.na(idx))) {
+      stop(sprintf("'%s' does not match any column names", arg_names[[i]]))
     }
     IDX <- append(IDX, idx)
     
@@ -61,7 +61,7 @@ check_args <- function(data,
   }
   
   # check if any column idx used twice
-  stopifnot("Same 'data' column(s) used twice" = all(table(IDX) == 1))
+  stopifnot("Same 'data' column used twice" = all(table(IDX) == 1))
   
   invisible(NULL)
 }
@@ -70,7 +70,9 @@ check_args <- function(data,
 check_space_distmat <- function(data,
                                 coords,
                                 space_distmat,
-                                space_distmethod) {
+                                space_distmethod,
+                                distGeo_a,
+                                distGeo_f) {
   if(is.null(space_distmat)) {
     # check space_distmethod
     if (is.null(space_distmethod)) {
@@ -80,15 +82,18 @@ check_space_distmat <- function(data,
       space_distmethod <- match.arg(space_distmethod, choices = c("geodesic", "euclidean"))
     }
     
-    space_distmat <- compute_distmat(data = data[coords], method = space_distmethod)
+    space_distmat <- compute_distmat(data = data[coords],
+                                     method = space_distmethod,
+                                     distGeo_a = distGeo_a,
+                                     distGeo_f = distGeo_f)
     
   } else {
     # check space_distmat
     stopifnot(
-      "'space_distmat' must be a numeric matrix or a 'dist' object" =
-        is.numeric(space_distmat),
-      "'space_distmat' must have the same number of rows as 'data'" =
-        nrow(data) == nrow(space_distmat)
+      "'space_distmat' must be a numeric matrix or an S3 'dist' object" =
+        (is.numeric(space_distmat) && is.matrix(space_distmat)) || inherits(space_distmat, "dist"),
+      "The dimension of 'space_distmat' does not correspond to the number of rows of 'data'" =
+        nrow(data) == nrow(space_distmat) && nrow(data) == nrow(space_distmat)
     )
     
     space_distmat <- as.matrix(space_distmat)
@@ -117,12 +122,13 @@ check_opt_args <- function(ls_tol = 0,
                            outlier_removal = FALSE,
                            outlier_iqrm = 1.5,
                            random_init = FALSE,
-                           sf_use_s2 = TRUE) {
+                           sf_use_s2 = TRUE,
+                           ...) {
   
   stopifnot(
     "'ls_tol' must be between 0 and 1" =
       is.numeric(ls_tol) && ls_tol >= 0 && ls_tol <= 1,
-    "'chebyshev_rho' must be non-negative" =
+    "'chebyshev_rho' must be non-negative numeric" =
       is.numeric(chebyshev_rho) && chebyshev_rho >= 0,
     "'filter_intersects' must be logical" =
       is.logical(filter_intersects),
@@ -134,7 +140,7 @@ check_opt_args <- function(ls_tol = 0,
       is.logical(filter_clustsize),
     "'outlier_removal' must be logical" =
       is.logical(outlier_removal),
-    "'outlier_iqrm' must be non-negative" =
+    "'outlier_iqrm' must be non-negative numeric" =
       is.numeric(outlier_iqrm) && outlier_iqrm >= 0,
     "'random_init' must be logical" =
       is.logical(random_init),
@@ -146,42 +152,13 @@ check_opt_args <- function(ls_tol = 0,
 
 # reorder_clust ---------------------------------------------------------------
 reorder_clust <- function(clust) {
-  # e.g. c(1,4,4,2) will become c(1,2,2,3)
-  if(length(unique(clust)) == 1) return(rep(1, length(clust)))
-  
-  sets <- list()
-  for (i in 1:length(clust)) {
-    sets[[i]] <- which(clust == clust[i])
-    if (length(sets[[i]]) == 0) sets[[i]] <- NA
-  }
-  
-  max_set_length <- max(sapply(sets, length))
-  sets <- lapply(sets, function(x) if (length(x) < max_set_length) {
-    c(x, rep(0, max_set_length - length(x)))} else {x})
-  sets <- do.call(rbind, sets)
-  sets <- unique(sets)
-  # remove empty clusters
-  sets <- as.matrix(sets[rowSums(sets) != 0, ])
-  
-  # put NA to the back
-  # count the number of rows with NA
-  n_row <- nrow(sets)
-  n_row_na <- length(unique(which(is.na(sets), arr.ind = T)[,"row"]))
-  if (n_row_na > 0) {
-    sets <- as.matrix(stats::na.omit(sets))
-    sets <- rbind(sets,NA)
-  }
-  
-  # reorder cluster labels
-  for (i in 1:nrow(sets)) {
-    for (j in 1:ncol(sets)) {
-      clust[sets[i,j]] <- i
-    }
-  }
+  clust <- as.factor(clust)
+  levels(clust) <- 1:length(levels(clust))
+  clust <- as.integer(clust)
   return(clust)
 }
 
-## minmax ---------------------------------------------------------------------
+# minmax ----------------------------------------------------------------------
 minmax <- function(x, lb = NULL, ub = NULL, max = FALSE, na.rm = TRUE) {
   # lower bound
   lb <- min(x, lb, na.rm = na.rm) %||% min(x, na.rm = na.rm)
@@ -191,15 +168,16 @@ minmax <- function(x, lb = NULL, ub = NULL, max = FALSE, na.rm = TRUE) {
   # normalise
   if (!max) {
     x <- (x - lb) / (ub - lb)
-    x <- if (!all(is.na(x))) x else 0
+    x <- if (!all(is.na(x))) x else rep(0, length(x))
   } else {
     x <- (x - ub) / (lb - ub)
-    x <- if (!all(is.na(x))) x else 1
+    x <- if (!all(is.na(x))) x else rep(1, length(x))
   } 
   return(x)
 }
 
 # globalVariables -------------------------------------------------------------
+utils::globalVariables(names = c("idx", "idx_pf"))
 # utils::globalVariables(
 #   names = c(
 #     ".data", "batch", "clust", "geometry", "idx" , "iter", "k",
