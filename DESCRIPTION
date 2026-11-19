@@ -1,30 +1,34 @@
 Package: stblob
-Title: SpatioTemporal Blob Partitioning Algorithm for Regional Time Series
+Title: STblob (SpatioTemporal blob) Optimisation Algorithm for Regional Time Series
 Version: 0.0.0.9000
 Authors@R: 
     person("Victor Yan Kin", "Lee", , "yan.kin.lee@sund.ku.dk", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0001-5598-9632"))
-Description: What the package does (one paragraph).
+Description: 
+    The package provides the tools for
+    optimising and evaluating the spatiotemporal blobs for regional time series.
+    The main function `stblob()` implements the STblob algorithm that
+    approximates the optimal trade-offs (Pareto front) between
+    within-cluster spatial proximity, temporal coverage and data type diversity.
+    Users will be able to select from the optimised partitions for subsequent analyses.
+    The package also provides supporting functions to help users in decision making.
 License: MIT + file LICENSE
 Depends: 
-    R (>= 2.10)
+    R (>= 3.5)
 Imports: 
-    dplyr,
+    aricode,
+    future,
     future.apply,
     geosphere,
-    ggplot2,
-    ggridges,
     lhs,
-    magrittr,
-    mclust,
+    MCMCpack,
     moocore,
-    rlang,
-    rnaturalearth,
-    sf,
-    tidyr
-Suggests: 
-    mvtnorm
+    progressr,
+    sf
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2.9000
+Config/roxygen2/version: 8.0.0
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
